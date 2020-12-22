@@ -1,3 +1,13 @@
+# our repo
+keys/elsevier_apikey
+src/R_Melinda/
+src/lda_stuff_come_back_to
+src/GuidedLDA
+src/mallet-2.0.8
+presentation/
+data/
+article/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -7,6 +17,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+
 .Python
 build/
 develop-eggs/
