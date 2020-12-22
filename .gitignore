@@ -6,7 +6,7 @@ src/GuidedLDA
 src/mallet-2.0.8
 presentation/
 data/
-article/
+article/paper/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
