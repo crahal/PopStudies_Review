@@ -56,8 +56,9 @@ def build_datasets(d_path):
                    encoding='utf-8')
 
 
-    auth_df = auth_df.drop_duplicates(subset=['doi', 'indexed_name'])
-    auth_df = auth_df[auth_df['forename'].notnull()]
+    #auth_df = auth_df.drop_duplicates(subset=['doi', 'indexed_name'])
+    #auth_df = auth_df[auth_df['forename'].notnull()]
+    auth_df['forename'] = auth_df['forename'].astype(str)
     auth_df['forename'] = auth_df['forename'].str.replace('Ø', 'O')
     auth_df['forename'] = auth_df['forename'].str.replace('É', 'E')
     auth_df['forename'] = auth_df['forename'].str.split(' ', expand=False).str[0]

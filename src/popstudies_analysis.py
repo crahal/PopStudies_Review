@@ -55,20 +55,7 @@ def make_mf_topics(auth_df, main_df, d_path):
     authors['Simple_Topic'] = authors['Topic'].str.extract('(\d+)',
                                                            expand=False)
     authors = authors[authors['Simple_Topic'].notnull()]
-    authors['gender_guesser'] = authors['gender_guesser'].str.replace('andy', 'unknown')
-    authors['clean_gender'] = np.nan
-    for index, row in authors.iterrows():
-        if row['gender_guesser'] == row['gender_detector']:
-            authors.loc[index, 'clean_gender'] = row['gender_detector']
-        elif (row['gender_guesser'] == 'female') and (row['gender_detector'] == 'unknown'):
-            authors.loc[index, 'clean_gender'] = 'female'
-        elif (row['gender_guesser'] == 'unknown') and (row['gender_detector'] == 'female'):
-            authors.loc[index, 'clean_gender'] = 'female'
 
-        elif (row['gender_guesser'] == 'male') and (row['gender_detector'] == 'unknown'):
-            authors.loc[index, 'clean_gender'] = 'male'
-        elif (row['gender_guesser'] == 'unknown') and (row['gender_detector'] == 'male'):
-            authors.loc[index, 'clean_gender'] = 'male'
     auth_out = pd.DataFrame(index=['1a', '1b', '2a', '2b', '2c',
                                    '3a', '3b', '3c','4a', '4b', '4c', '5a',
                                    '6a', '6b', '6c', '7a'],
@@ -430,9 +417,8 @@ def headline_topics(main_df):
 
 
 def gender_over_time(auth_df):
-
-    auth_df['prismcoverdate'] = pd.to_datetime(auth_df['prismcoverdate'], format='%Y-%m-%d')
-    auth_df['Year'] = auth_df['prismcoverdate'].dt.year
+    auth_df.loc[:, 'prismcoverdate'] = pd.to_datetime(auth_df['prismcoverdate'], format='%Y-%m-%d')
+    auth_df.loc[:, 'Year'] = auth_df['prismcoverdate'].dt.year
     gender_time_df = pd.DataFrame(index = auth_df['Year'].unique(),
                                   columns = ['pc_guess_fem_1', 'pc_guess_unknown_1',
                                              'pc_detect_fem_1', 'pc_detect_unknown_1'
@@ -486,11 +472,11 @@ def gender_over_time(auth_df):
             gender_time_df.loc[year, 'pc_detect_unknown_10'] = len(temp[(temp['gender_detector']=='unknown')])/len(temp)
         except:
             pass
-    gender_time_df['pc_detect_fem_10_upper'] = gender_time_df['pc_detect_fem_10'] + gender_time_df['pc_detect_unknown_10']/4
-    gender_time_df['pc_detect_fem_10_lower'] = gender_time_df['pc_detect_fem_10'] - gender_time_df['pc_detect_unknown_10']/4
+    gender_time_df.loc[:, 'pc_detect_fem_10_upper'] = gender_time_df['pc_detect_fem_10'] + gender_time_df['pc_detect_unknown_10']/4
+    gender_time_df.loc[:, 'pc_detect_fem_10_lower'] = gender_time_df['pc_detect_fem_10'] - gender_time_df['pc_detect_unknown_10']/4
 
-    gender_time_df['pc_guess_fem_10_upper'] = gender_time_df['pc_guess_fem_10'] + gender_time_df['pc_guess_unknown_10']/4
-    gender_time_df['pc_guess_fem_10_lower'] = gender_time_df['pc_guess_fem_10'] - gender_time_df['pc_guess_unknown_10']/4
+    gender_time_df.loc[:, 'pc_guess_fem_10_upper'] = gender_time_df['pc_guess_fem_10'] + gender_time_df['pc_guess_unknown_10']/4
+    gender_time_df.loc[:, 'pc_guess_fem_10_lower'] = gender_time_df['pc_guess_fem_10'] - gender_time_df['pc_guess_unknown_10']/4
 
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7))
