@@ -26,9 +26,9 @@ import warnings
 
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
-mpl.rc('font', family='Helvetica')
-csfont = {'fontname': 'Helvetica'}
-hfont = {'fontname': 'Helvetica'}
+mpl.rc('font', family='Arial')
+csfont = {'fontname': 'Arial'}
+hfont = {'fontname': 'Arial'}
 
 
 def make_mf_topics(auth_df, main_df, d_path):
@@ -153,7 +153,7 @@ def make_mwc(main_df):
     type_df = type_df[type_df.index!='6']
     type_df = type_df.reindex(index=type_df.index[::-1])
     type_df['Men_Count'] = type_df['Men_Count'].fillna(0)
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6), tight_layout=True)
     ax1 = plt.subplot2grid((12, 12), (0, 0), colspan=3, rowspan=12)
     ax2 = plt.subplot2grid((12, 12), (0, 3), colspan=3, rowspan=12)
     ax3 = plt.subplot2grid((12, 12), (0, 6), colspan=3, rowspan=12)
@@ -192,12 +192,10 @@ def make_mwc(main_df):
     ax2.set_xlabel('Focus on: Women', fontsize=13)
     ax3.set_xlabel('Focus on: Children', fontsize=13)
     ax4.set_xlabel('Total Number of Papers', fontsize=13)
-
     ax1.set_title('A.', fontsize=24, loc='left', y=1.02, x=-.1)
     ax2.set_title('B.', fontsize=24, loc='left', y=1.02, x=-.1)
     ax3.set_title('C.', fontsize=24, loc='left', y=1.02, x=-.1)
     ax4.set_title('D.', fontsize=24, loc='left', y=1.02, x=-.1)
-    plt.tight_layout(True)
     sns.despine()
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
     plt.savefig(os.path.join(fig_path, 'MWC_Topics.pdf'),
@@ -236,7 +234,7 @@ def headline_topics(main_df):
 
     colors = ['#fff2ae', '#cbd5e8', '#fdcdac', '#b3e2cd', '#f4cae4', '#e6f5c9']
     colors1 = ['#d73027', '#fc8d59', '#fee090', '#ffffbf', '#e0f3f8', '#91bfdb', '#4575b4']
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(13, 8), tight_layout=True)
     ax7 = plt.subplot2grid((7, 32), (6, 0), rowspan=1, colspan=16)
     ax1 = plt.subplot2grid((7, 32), (0, 0), rowspan=1, colspan=16)
     ax2 = plt.subplot2grid((7, 32), (1, 0), rowspan=1, colspan=16)
@@ -251,32 +249,32 @@ def headline_topics(main_df):
 
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '1'],
-                  s=5, orient='h', ax=ax1,
-                  color=colors1[0], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax1,
+                  color=colors1[0], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '2'],
-                  s=5, orient='h', ax=ax2,
-                  color=colors1[1], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax2,
+                  color=colors1[1], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '3'],
-                  s=5, orient='h', ax=ax3,
-                  color=colors1[2], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax3,
+                  color=colors1[2], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '4'],
-                  s=5, orient='h', ax=ax4,
-                  color=colors1[3], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax4,
+                  color=colors1[3], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '5'],
-                  s=5, orient='h', ax=ax5,
-                  color=colors1[4], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax5,
+                  color=colors1[4], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '6'],
-                  s=5, orient='h', ax=ax6,
-                  color=colors1[5], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax6,
+                  color=colors1[5], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '7'],
-                  s=5, orient='h', ax=ax7,
-                  color=colors1[6], linewidth=0.35)
+                  s=2.75, orient='h', ax=ax7,
+                  color=colors1[6], linewidth=0.3)
 
     for axx in [ax1, ax2, ax3, ax4, ax5, ax6]:
         axx.set_xticklabels([])
@@ -287,7 +285,7 @@ def headline_topics(main_df):
 
     import matplotlib.dates as mdates
     for index, row in topic_df.iterrows():
-        if (';' in row['Topic']):
+        if ';' in row['Topic']:
             color = '#d3d3d3'
             cites = row['citedbycount']
             date = pd.to_datetime(row['prismcoverdate'])
@@ -331,7 +329,6 @@ def headline_topics(main_df):
     ax7.set_xlim(pd.Timestamp('1947-01-01'), pd.Timestamp('2020-12-31'))
     sns.despine(ax=ax7, top=True, left=False, right=True, bottom=False)
     sns.despine(ax=ax8, top=True, left=True, right=False, bottom=False)
-    plt.tight_layout(True)
     ax1.set_title('A.', fontsize=24, loc='left', y=1.035, x=0)
     ax8.set_title('B.', fontsize=24, loc='left', y=1.035, x=0);
     ax7.set_xlabel('')
@@ -358,34 +355,31 @@ def headline_topics(main_df):
     ax8.legend(handles=legend_elements, loc='upper left', frameon=True,
                fontsize=10)
     ax8.annotate("Bumpass and Lu (2000)\nCitation Count: 728\nTopic: 6a",
-                 xy=(730000, 728), xycoords='data',
-                 xytext=(731500, 580), fontsize=8, textcoords='data',
+                 xy=(7300, 728), xycoords='data',
+                 xytext=(7315, 580), fontsize=8, textcoords='data',
                  bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-
-    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a and 4c",
-                 xy=(721150, 704), xycoords='data',
-                 xytext=(723000, 550), fontsize=8, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25),
-                 arrowprops=dict(arrowstyle="->",
-                                 connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-    ax8.annotate("Cleland and Wilson (1987)\nCitation Count: 433\nTopic: 1b",
-                 xy=(725500, 443), xycoords='data',
-                 xytext=(729000, 340), fontsize=8, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-
-    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a:4b",
-                 xy=(722500, 310), xycoords='data',
-                 xytext=(717000, 450), fontsize=8, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-
-    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c:2a",
-                 xy=(716500, 265), xycoords='data',
-                 xytext=(712000, 340), fontsize=8, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+#    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a and 4c",
+#                 xy=(721150, 704), xycoords='data',
+#                 xytext=(723000, 550), fontsize=8, textcoords='data',
+#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25),
+#                 arrowprops=dict(arrowstyle="->",
+#                                 connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+#    ax8.annotate("Cleland and Wilson (1987)\nCitation Count: 433\nTopic: 1b",
+#                 xy=(725500, 443), xycoords='data',
+#                 xytext=(729000, 340), fontsize=8, textcoords='data',
+#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
+#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+#    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a:4b",
+#                 xy=(722500, 310), xycoords='data',
+#                 xytext=(717000, 450), fontsize=8, textcoords='data',
+#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
+#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+#    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c:2a",
+#                 xy=(716500, 265), xycoords='data',
+#                 xytext=(712000, 340), fontsize=8, textcoords='data',
+#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
+#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
     ax1.set_ylabel('Fertility', rotation=90)
     ax1.set_yticklabels([''])
     ax2.set_ylabel('Mortality', rotation=90)
@@ -401,7 +395,6 @@ def headline_topics(main_df):
     ax7.set_ylabel('Other', rotation=90)
     ax7.set_yticklabels([''])
     ax8.set_ylim(-25, 790)
-    plt.tight_layout(pad=2)
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
     plt.savefig(os.path.join(fig_path, 'topics_over_time.pdf'),
                 bbox_inches='tight')
@@ -411,73 +404,82 @@ def headline_topics(main_df):
                 bbox_inches='tight')
 
 
-
-
-
-
-
 def gender_over_time(auth_df):
-    auth_df.loc[:, 'prismcoverdate'] = pd.to_datetime(auth_df['prismcoverdate'], format='%Y-%m-%d')
-    auth_df.loc[:, 'Year'] = auth_df['prismcoverdate'].dt.year
-    gender_time_df = pd.DataFrame(index = auth_df['Year'].unique(),
-                                  columns = ['pc_guess_fem_1', 'pc_guess_unknown_1',
-                                             'pc_detect_fem_1', 'pc_detect_unknown_1'
-                                             'pc_guess_fem_3', 'pc_guess_unknown_3',
-                                             'pc_detect_fem_3', 'pc_detect_unknown_3',
-                                             'pc_guess_fem_5', 'pc_guess_unknown_5',
-                                             'pc_detect_fem_5', 'pc_detect_unknown_5',
-                                             'pc_guess_fem_10', 'pc_guess_unknown_10',
-                                             'pc_detect_fem_10', 'pc_detect_unknown_10'])
+    auth_df_g = auth_df.copy()
+    auth_df_g.loc[:, 'prismcoverdate'] = pd.to_datetime(auth_df_g['prismcoverdate'], format='%Y-%m-%d')
+    auth_df_g.loc[:, 'Year'] = auth_df_g['prismcoverdate'].dt.year
+    gender_time_df = pd.DataFrame(index=auth_df_g['Year'].unique(),
+                                  columns=['pc_guess_fem_1', 'pc_guess_unknown_1',
+                                           'pc_detect_fem_1', 'pc_detect_unknown_1'
+                                           'pc_guess_fem_3', 'pc_guess_unknown_3',
+                                           'pc_detect_fem_3', 'pc_detect_unknown_3',
+                                           'pc_guess_fem_5', 'pc_guess_unknown_5',
+                                           'pc_detect_fem_5', 'pc_detect_unknown_5',
+                                           'pc_guess_fem_10', 'pc_guess_unknown_10',
+                                           'pc_detect_fem_10', 'pc_detect_unknown_10'])
     for year in range(gender_time_df.index.min(), gender_time_df.index.max()):
-        temp = auth_df[auth_df['Year']==year]
-        temp = temp[temp['gender_guesser']!='andy']
+        temp = auth_df_g[auth_df_g['Year'] == year]
+        temp = temp[temp['gender_guesser'] != 'andy']
         try:
-            gender_time_df.loc[year, 'pc_guess_fem_1'] = len(temp[temp['gender_guesser']=='female'])/len(temp[(temp['gender_guesser']=='male') | (temp['gender_guesser']=='female')])
-            gender_time_df.loc[year, 'pc_guess_unknown_1'] = len(temp[temp['gender_guesser']=='unknown'])/len(temp)
-            gender_time_df.loc[year, 'pc_detect_fem_1'] = len(temp[temp['gender_detector']=='female'])/len(temp[(temp['gender_detector']=='male') | (temp['gender_detector']=='female')])
-            gender_time_df.loc[year, 'pc_detect_unknown_1'] = len(temp[(temp['gender_detector']=='unknown')])/len(temp)
+            gender_time_df.loc[year, 'pc_guess_fem_1'] = len(temp[temp['gender_guesser'] == 'female'])/\
+                                                         len(temp[(temp['gender_guesser'] == 'male') |
+                                                                  (temp['gender_guesser'] == 'female')])
+            gender_time_df.loc[year, 'pc_guess_unknown_1'] = len(temp[temp['gender_guesser'] == 'unknown'])/\
+                                                             len(temp)
+            gender_time_df.loc[year, 'pc_detect_fem_1'] = len(temp[temp['gender_detector'] == 'female'])/\
+                                                          len(temp[(temp['gender_detector'] == 'male') |
+                                                                   (temp['gender_detector'] == 'female')])
+            gender_time_df.loc[year, 'pc_detect_unknown_1'] = len(temp[(temp['gender_detector'] == 'unknown')])/len(temp)
         except:
             pass
 
-
     for year in range(gender_time_df.index.min()+2, gender_time_df.index.max()):
-        temp = auth_df[(auth_df['Year']>year-3) & (auth_df['Year']<=year)]
-        temp = temp[temp['gender_guesser']!='andy']
+        temp = auth_df_g[(auth_df_g['Year']>year-3) & (auth_df_g['Year'] <= year)]
+        temp = temp[temp['gender_guesser'] != 'andy']
         try:
-            gender_time_df.loc[year, 'pc_guess_fem_3'] = len(temp[temp['gender_guesser']=='female'])/len(temp[(temp['gender_guesser']=='male') | (temp['gender_guesser']=='female')])
+            gender_time_df.loc[year, 'pc_guess_fem_3'] = len(temp[temp['gender_guesser']=='female'])/\
+                                                         len(temp[(temp['gender_guesser']=='male') |
+                                                                  (temp['gender_guesser']=='female')])
             gender_time_df.loc[year, 'pc_guess_unknown_3'] = len(temp[temp['gender_guesser']=='unknown'])/len(temp)
-            gender_time_df.loc[year, 'pc_detect_fem_3'] = len(temp[temp['gender_detector']=='female'])/len(temp[(temp['gender_detector']=='male') | (temp['gender_detector']=='female')])
+            gender_time_df.loc[year, 'pc_detect_fem_3'] = len(temp[temp['gender_detector']=='female'])/\
+                                                          len(temp[(temp['gender_detector']=='male') |
+                                                                   (temp['gender_detector']=='female')])
             gender_time_df.loc[year, 'pc_detect_unknown_3'] = len(temp[(temp['gender_detector']=='unknown')])/len(temp)
         except:
             pass
 
-
     for year in range(gender_time_df.index.min()+4, gender_time_df.index.max()):
-        temp = auth_df[(auth_df['Year']>year-5) & (auth_df['Year']<=year)]
-        temp = temp[temp['gender_guesser']!='andy']
+        temp = auth_df_g[(auth_df_g['Year']>year-5) & (auth_df_g['Year'] <= year)]
+        temp = temp[temp['gender_guesser'] != 'andy']
         try:
-            gender_time_df.loc[year, 'pc_guess_fem_5'] = len(temp[temp['gender_guesser']=='female'])/len(temp[(temp['gender_guesser']=='male') | (temp['gender_guesser']=='female')])
-            gender_time_df.loc[year, 'pc_guess_unknown_5'] = len(temp[temp['gender_guesser']=='unknown'])/len(temp)
-            gender_time_df.loc[year, 'pc_detect_fem_5'] = len(temp[temp['gender_detector']=='female'])/len(temp[(temp['gender_detector']=='male') | (temp['gender_detector']=='female')])
-            gender_time_df.loc[year, 'pc_detect_unknown_5'] = len(temp[(temp['gender_detector']=='unknown')])/len(temp)
+            gender_time_df.loc[year, 'pc_guess_fem_5'] = len(temp[temp['gender_guesser'] == 'female'])/\
+                                                         len(temp[(temp['gender_guesser'] == 'male') |
+                                                                  (temp['gender_guesser'] == 'female')])
+            gender_time_df.loc[year, 'pc_guess_unknown_5'] = len(temp[temp['gender_guesser'] == 'unknown'])/len(temp)
+            gender_time_df.loc[year, 'pc_detect_fem_5'] = len(temp[temp['gender_detector'] == 'female'])/\
+                                                          len(temp[(temp['gender_detector'] == 'male') |
+                                                                   (temp['gender_detector'] == 'female')])
+            gender_time_df.loc[year, 'pc_detect_unknown_5'] = len(temp[(temp['gender_detector'] == 'unknown')])/len(temp)
         except:
             pass
     for year in range(gender_time_df.index.min()+9, gender_time_df.index.max()):
-        temp = auth_df[(auth_df['Year']>year-10) & (auth_df['Year']<=year)]
+        temp = auth_df_g[(auth_df_g['Year'] > year-10) & (auth_df_g['Year'] <= year)]
         temp = temp[temp['gender_guesser']!='andy']
         try:
-            gender_time_df.loc[year, 'pc_guess_fem_10'] = len(temp[temp['gender_guesser']=='female'])/len(temp[(temp['gender_guesser']=='male') | (temp['gender_guesser']=='female')])
-            gender_time_df.loc[year, 'pc_guess_unknown_10'] = len(temp[temp['gender_guesser']=='unknown'])/len(temp)
-            gender_time_df.loc[year, 'pc_detect_fem_10'] = len(temp[temp['gender_detector']=='female'])/len(temp[(temp['gender_detector']=='male') | (temp['gender_detector']=='female')])
-            gender_time_df.loc[year, 'pc_detect_unknown_10'] = len(temp[(temp['gender_detector']=='unknown')])/len(temp)
+            gender_time_df.loc[year, 'pc_guess_fem_10'] = len(temp[temp['gender_guesser'] == 'female'])/\
+                                                          len(temp[(temp['gender_guesser'] == 'male') |
+                                                                   (temp['gender_guesser'] == 'female')])
+            gender_time_df.loc[year, 'pc_guess_unknown_10'] = len(temp[temp['gender_guesser'] == 'unknown'])/len(temp)
+            gender_time_df.loc[year, 'pc_detect_fem_10'] = len(temp[temp['gender_detector'] == 'female'])/\
+                                                           len(temp[(temp['gender_detector'] == 'male') |
+                                                                    (temp['gender_detector'] == 'female')])
+            gender_time_df.loc[year, 'pc_detect_unknown_10'] = len(temp[(temp['gender_detector'] == 'unknown')])/len(temp)
         except:
             pass
     gender_time_df.loc[:, 'pc_detect_fem_10_upper'] = gender_time_df['pc_detect_fem_10'] + gender_time_df['pc_detect_unknown_10']/4
     gender_time_df.loc[:, 'pc_detect_fem_10_lower'] = gender_time_df['pc_detect_fem_10'] - gender_time_df['pc_detect_unknown_10']/4
-
     gender_time_df.loc[:, 'pc_guess_fem_10_upper'] = gender_time_df['pc_guess_fem_10'] + gender_time_df['pc_guess_unknown_10']/4
     gender_time_df.loc[:, 'pc_guess_fem_10_lower'] = gender_time_df['pc_guess_fem_10'] - gender_time_df['pc_guess_unknown_10']/4
-
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7))
     color = ['#377eb8', '#ffb94e']
@@ -526,10 +528,12 @@ def gender_over_time(auth_df):
     ax1.set_title('A.', fontsize=24, loc='left', y=1.035, x=0)
     ax2.set_title('B.', fontsize=24, loc='left', y=1.035, x=0);
 
-    early_annot_guesser = len(auth_df[(auth_df['Year']<=1984) & (auth_df['gender_guesser']=='female')])/\
-                          len(auth_df[(auth_df['Year']<=1984) & ((auth_df['gender_guesser']=='female') | (auth_df['gender_guesser']=='male'))])
-    late_annot_guesser = len(auth_df[(auth_df['Year']>1984) & (auth_df['gender_guesser']=='female')])/\
-                         len(auth_df[(auth_df['Year']>1984) & ((auth_df['gender_guesser']=='female') | (auth_df['gender_guesser']=='male'))])
+    early_annot_guesser = len(auth_df_g[(auth_df_g['Year'] <= 1984) & (auth_df_g['gender_guesser'] == 'female')])/\
+                          len(auth_df_g[(auth_df_g['Year'] <= 1984) & ((auth_df_g['gender_guesser'] == 'female') |
+                                                                 (auth_df_g['gender_guesser'] == 'male'))])
+    late_annot_guesser = len(auth_df_g[(auth_df_g['Year']>1984) & (auth_df_g['gender_guesser'] == 'female')])/\
+                         len(auth_df_g[(auth_df_g['Year']>1984) & ((auth_df_g['gender_guesser'] == 'female') |
+                                                               (auth_df_g['gender_guesser'] == 'male'))])
     ax2.axhline(y=early_annot_guesser*100, xmax=0.44, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax2.axhline(y=late_annot_guesser*100, xmin=0.44, xmax=1, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax2.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_guesser,3)*100) + '%',
@@ -541,12 +545,12 @@ def gender_over_time(auth_df):
                  xytext=(1957, (late_annot_guesser*100)-6.5), fontsize=8, textcoords='data',
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
 
-
-
-    early_annot_detecter = len(auth_df[(auth_df['Year']<=1984) & (auth_df['gender_detector']=='female')])/\
-                          len(auth_df[(auth_df['Year']<=1984) & ((auth_df['gender_detector']=='female') | (auth_df['gender_detector']=='male'))])
-    late_annot_detecter = len(auth_df[(auth_df['Year']>1984) & (auth_df['gender_detector']=='female')])/\
-                         len(auth_df[(auth_df['Year']>1984) & ((auth_df['gender_detector']=='female') | (auth_df['gender_detector']=='male'))])
+    early_annot_detecter = len(auth_df_g[(auth_df_g['Year'] <= 1984) & (auth_df_g['gender_detector'] == 'female')])/\
+                           len(auth_df_g[(auth_df_g['Year'] <= 1984) & ((auth_df_g['gender_detector'] == 'female') |
+                                                                   (auth_df_g['gender_detector'] == 'male'))])
+    late_annot_detecter = len(auth_df_g[(auth_df_g['Year']>1984) & (auth_df_g['gender_detector'] == 'female')])/\
+                          len(auth_df_g[(auth_df_g['Year']>1984) & ((auth_df_g['gender_detector'] == 'female') |
+                                                                    (auth_df_g['gender_detector'] == 'male'))])
     ax1.axhline(y=early_annot_detecter*100, xmax=0.44, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax1.axhline(y=late_annot_detecter*100, xmin=0.44, xmax=1, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax1.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_detecter,3)*100) + '%',
@@ -565,8 +569,6 @@ def gender_over_time(auth_df):
                 bbox_inches='tight', dpi=600)
     plt.savefig(os.path.join(fig_path, 'gender_over_time.svg'),
                 bbox_inches='tight')
-
-
 
 
 def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
@@ -601,12 +603,12 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     # preamble
     titlesize=15
     markersize = 10
-    csfont = {'fontname': 'Helvetica'}
-    hfont = {'fontname': 'Helvetica'}
+    csfont = {'fontname': 'Arial'}
+    hfont = {'fontname': 'Arial'}
     region_lookup = pd.read_csv(os.path.join(d_path, 'support', 'region_lookup.csv'))
     country_count = make_country_count(auth_df)
     gdf = make_gdf(country_count, os.path.join(d_path, 'shapefiles',
-                                              'global.shp'))
+                                               'global.shp'))
     gdf['count'] = gdf['count'].fillna(0)
     gdf= gdf[gdf['CNTRY_NAME']!='Antarctica']
     islands_to_remove = ['Solomon Islands', 'Bouvet Island', 'Cayman Islands', 'Pacific Islands (Palau)', 'Cook Islands', 'Paracel Islands', 'Pitcairn Islands', 'Cocos (Keeling) Islands', 'Northern Mariana Islands', 'Jarvis Island', 'Falkland Islands (Islas Malvinas)', 'Faroe Islands', 'Baker Island', 'Glorioso Islands', 'Heard Island & McDonald Islands', 'Howland Island', 'Juan De Nova Island', 'Christmas Island',  'Midway Islands', 'Norfolk Island', 'Spratly Islands',  'Marshall Islands', 'Turks and Caicos Islands', 'British Virgin Islands', 'Virgin Islands', 'Wake Island']
@@ -621,7 +623,7 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     time_df = make_time(main_df, auth_df)
     aff_count = make_aff_count(auth_df)
 
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 10), tight_layout=True)
     ax1 = plt.subplot2grid((10, 3), (0, 0), colspan=1, rowspan=4)
     ax2 = plt.subplot2grid((10, 3), (0, 1), colspan=1, rowspan=4)
     ax4 = plt.subplot2grid((10, 3), (0, 2), colspan=1, rowspan=4)
@@ -753,7 +755,6 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     ax3.set_title('Countries', **csfont,
                   fontsize=titlesize+4,y=1)
     ax3.set_title('D.', **csfont, fontsize=titlesize+6, loc='left', y=1)
-    plt.tight_layout(True)
     sns.despine(ax=ax2)
     sns.despine(ax=ax4)
 
@@ -835,27 +836,27 @@ def make_gdf(df, shapefile):
 
 
 def make_author_table(auth_df, main_df, d_path, table_filter):
-    auth_df1 = auth_df.drop_duplicates(subset=['doi', 'authorid'])
-    auth_df1['authorid'] = auth_df1['authorid']
+    auth_df1 = auth_df.drop_duplicates(subset=['doi', 'authorid']).copy()
+    auth_df1.loc[:, 'authorid'] = auth_df1['authorid']
     auth_papercount = auth_df1.groupby(['authorid'])['authorid'].count().sort_values(ascending=False)
     auth_papercount = auth_papercount.reset_index(name='Papers')
     auth_wcites = pd.merge(auth_df1, main_df[['DOI', 'citedbycount', 'Date']], how='left',
                            left_on='doi', right_on='DOI')
     auth_wcites = auth_wcites[auth_wcites['authorid'].notnull()]
-    auth_wcites['authorid'] = auth_wcites['authorid'].astype(int).astype(str)
-    auth_wcites['year'] = auth_wcites.Date.str.extract(r'([0-9][0-9][0-9][0-9])', expand=True)
+    auth_wcites.loc[:, 'authorid'] = auth_wcites['authorid'].astype(int).astype(str)
+    auth_wcites.loc[:, 'year'] = auth_wcites.Date.str.extract(r'([0-9][0-9][0-9][0-9])', expand=True)
     auth_wcites_grouped = auth_wcites.groupby(['authorid'])['citedbycount'].sum()
     auth_wcites_grouped = auth_wcites_grouped.reset_index(name='Cites')
     auth_flat = pd.read_csv(os.path.join(d_path, 'scopus',
                                          'author', 'parsed',
                                          'scopus_authors.tsv'), sep='\t')
-    auth_flat['fullname'] = auth_flat['givenname'] + ' ' + auth_flat['surname']
+    auth_flat.loc[:, 'fullname'] = auth_flat['givenname'] + ' ' + auth_flat['surname']
     auth_popstudies_h = auth_wcites[['authorid', 'doi', 'citedbycount']]
     auth_popstudies_h = auth_popstudies_h[auth_popstudies_h['authorid'].notnull()]
     auth_popstudies_h = auth_popstudies_h.set_index('authorid')
     auth_flat['H-Index'] = 0
     auth_flat = auth_flat[auth_flat['author'].notnull()]
-    auth_flat['author'] = auth_flat['author'].astype(str)
+    auth_flat.loc[:, 'author'] = auth_flat['author'].astype(str)
     auth_flat = auth_flat.set_index('author')
     counter = 0
     for author in auth_flat.index:
@@ -871,13 +872,12 @@ def make_author_table(auth_df, main_df, d_path, table_filter):
                 break
             else:
                 auth_flat.loc[author, 'H-Index'] = int(pubnumber+1)
-    import numpy as np
     auth_flat['First'] = np.nan
     auth_flat['Last'] = np.nan
     for auth in auth_flat.index:
         temp = auth_wcites[auth_wcites['authorid'] ==
                            auth].sort_values(by='citedbycount',
-                                               ascending=False)
+                                             ascending=False)
         auth_flat.loc[auth, 'First'] = temp['year'].min()
         auth_flat.loc[auth, 'Last'] = temp['year'].max()
     auth_name = auth_flat[['fullname', 'H-Index',
@@ -889,8 +889,8 @@ def make_author_table(auth_df, main_df, d_path, table_filter):
     author_df = pd.merge(auth_papercount, auth_wcites_grouped, how='left',
                          left_on = 'authorid', right_on = 'authorid')
     author_df['authorid'] = author_df['authorid'].astype(int).astype(str)
-    author_df = pd.merge(author_df, auth_name, how = 'left',
-                         left_on = 'authorid', right_on = 'authorid')
+    author_df = pd.merge(author_df, auth_name, how='left',
+                         left_on='authorid', right_on='authorid')
     author_df = author_df.set_index('fullname')
     auth_out = author_df[['Papers', 'Cites', 'H-Index', 'First', 'Last']]
     auth_out = auth_out.sort_values(by=table_filter, ascending=False)
@@ -932,8 +932,9 @@ def make_word_vis(main_df, figure_path, d_path):
         wordlist.append(' '.join([en_stemmer.stem(w) for w in elem.split(' ') if w.isalnum() and not w in stop]))
     words_tit_mat = co_occurrence(wordlist, 5)
     matsize = 25
-    csfont = {'fontname': 'Helvetica'}
-    hfont = {'fontname': 'Helvetica'}
+    csfont = {'fontname': 'Arial'}
+    hfont = {'fontname': 'Arial'}
+    sns.set(font="serif")
     abs_sum = words_abs_mat.sum().sum()
     tit_sum = words_tit_mat.sum().sum()
     tot_row_abs = pd.DataFrame(words_abs_mat.sum())
@@ -954,7 +955,7 @@ def make_word_vis(main_df, figure_path, d_path):
     words_abs_mat.astype(float).set_diag(np.nan)
     words_tit_mat.astype(float).set_diag(np.nan)
     sns.set_style('ticks')
-    fig = plt.figure(figsize=(16,12))
+    fig = plt.figure(figsize=(16, 12), tight_layout=None)
     ax1 = fig.add_subplot(221)
 
     cmap = sns.diverging_palette(230, 20, as_cmap=True)
@@ -1059,7 +1060,6 @@ def make_word_vis(main_df, figure_path, d_path):
     ax4.set_title('D.', loc='left', y=1.05,  **hfont, fontsize=22, x=0)
     ax4.set_title("Word Co-occurrence: Titles",
                   loc='center',y=1.1, **hfont, fontsize=18, x=.6)
-    plt.tight_layout(True)
 
     plt.savefig(os.path.join(figure_path, 'word_freq_cooc.svg'),
                 bbox_inches='tight')
