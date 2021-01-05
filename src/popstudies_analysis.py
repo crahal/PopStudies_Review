@@ -682,8 +682,10 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aa[3].set_edgecolor('k')
     aa[5].set_color('#fff2ae')
     aa[5].set_edgecolor('k')
+
+    ax4.yaxis.set_major_locator(mtick.FixedLocator(range(0, len(aff_series))))
     ax4.set_yticklabels(aff_series.index)
-    ax = ax4.set_ylabel('')
+    ax = ax4.set_ylabel('') # ?
     ax4.set_yticks(np.arange(len(aff_series)))
 
     aa[4].set_color('#cbd5e8')
@@ -934,7 +936,6 @@ def make_word_vis(main_df, figure_path, d_path):
     matsize = 25
     csfont = {'fontname': 'Arial'}
     hfont = {'fontname': 'Arial'}
-    sns.set(font="serif")
     abs_sum = words_abs_mat.sum().sum()
     tit_sum = words_tit_mat.sum().sum()
     tot_row_abs = pd.DataFrame(words_abs_mat.sum())
@@ -947,30 +948,46 @@ def make_word_vis(main_df, figure_path, d_path):
     words_tit_mat = words_tit_mat[tot_row_tit.index.to_list()]
     words_tit_mat = words_tit_mat.reindex(index=tot_row_tit.index.to_list())
     mask_abs = np.zeros_like(words_abs_mat.iloc[0:matsize, 0:matsize], dtype=np.int16)
-    mask_abs[np.triu_indices_from(mask_abs)]= True
+    mask_abs[np.triu_indices_from(mask_abs)] = True
     mask_tit = np.zeros_like(words_tit_mat.iloc[0:matsize, 0:matsize], dtype=np.int16)
-    mask_tit[np.triu_indices_from(mask_tit)]= True
+    mask_tit[np.triu_indices_from(mask_tit)] = True
 
     pd.DataFrame.set_diag = set_diag
     words_abs_mat.astype(float).set_diag(np.nan)
     words_tit_mat.astype(float).set_diag(np.nan)
     sns.set_style('ticks')
-    fig = plt.figure(figsize=(16, 12), tight_layout=None)
-    ax1 = fig.add_subplot(221)
+
+    fig = plt.figure(figsize=(16, 13))
+    ax1 = plt.subplot2grid((49, 48), (0, 0), rowspan=21, colspan=24)
+    ax2 = plt.subplot2grid((49, 48), (0, 26), rowspan=21, colspan=20, projection='polar')
+    ax3 = plt.subplot2grid((49, 48), (28, 0), rowspan=21, colspan=20, projection='polar')
+    ax4 = plt.subplot2grid((49, 48), (28, 22), rowspan=21, colspan=24)
+    ax1.set_title('A.', loc='left', y=1.01,  **hfont, fontsize=21, x=-.05)
+    ax1.set_title("Word Co-occurrence: Abstracts",
+                  loc='center', y=1.01, **hfont, fontsize=17, x=0.55)
+    ax2.set_title('B.', loc='left', y=1.01,  **hfont, fontsize=21, x=-.35)
+    ax2.set_title("Frequency distribution: Abstracts",
+                 loc='center', y=1.01, **hfont, fontsize=17, x=.40)
+    ax3.set_title('C.', loc='left', y=1.01,  **hfont, fontsize=22, x=-.20)
+    ax3.set_title("Frequency distribution: Titles",
+                  loc='center', y=1.01, **hfont, fontsize=17,  x=0.55)
+    ax4.set_title('D.', loc='left', y=1.01,  **hfont, fontsize=21, x=0)
+    ax4.set_title("Word Co-occurrence: Titles",
+                  loc='center', y=1.01, **hfont, fontsize=17, x=0.575)
 
     cmap = sns.diverging_palette(230, 20, as_cmap=True)
-    ax_abs = sns.heatmap(words_abs_mat.astype(float),# square = True,
+    ax_abs = sns.heatmap(words_abs_mat.astype(float),
                          cmap=cmap, mask = mask_abs,
-                         linewidths=.5, cbar_kws={"shrink": 1,
-                                                  'use_gridspec':True,
-                                                 },
+                         linewidths=.5,
+                         cbar_kws={"shrink": 1, 'use_gridspec': True},
                          ax=ax1)
-
-    ax2 = fig.add_subplot(222, projection='polar')
+    ax_abs.collections[0].colorbar.outline.set_edgecolor('k')
+    ax_abs.collections[0].colorbar.outline.set_linewidth(1)
+    ax_abs.collections[0].colorbar.ax.yaxis.set_ticks_position('left')
     iN = len(df_abs[0:matsize]['count'])
     labs = df_abs[0:matsize].index
     arrCnts = np.array(df_abs[0:matsize]['count'])+.2
-    theta=np.arange(0,2*np.pi,2*np.pi/(iN))
+    theta=np.arange(0, 2*np.pi, 2*np.pi / (iN))
     width = (5*np.pi)/iN
     bottom = 0.4
     ax2.set_theta_zero_location('W')
@@ -978,7 +995,7 @@ def make_word_vis(main_df, figure_path, d_path):
     bars = ax2.plot(theta, arrCnts, alpha=1, linestyle='-', marker='o',
                    color='#377eb8', markersize=7, markerfacecolor='w',
                    markeredgecolor='#ff5148')
-    plt.axis('off')
+    ax2.axis('off')
     rotations = np.rad2deg(theta)
     y0,y1 = ax2.get_ylim()
     for x, bar, rotation, label in zip(theta, arrCnts, rotations, labs):
@@ -1000,7 +1017,6 @@ def make_word_vis(main_df, figure_path, d_path):
     ax2.plot((0, theta[-1]), (0, arrCnts[-1]),
              color='k', linewidth=1, alpha=0.5, linestyle='--')
 
-    ax3 = fig.add_subplot(223, projection='polar')
     iN = len(df_tit[0:matsize]['count'])
     labs = df_tit[0:matsize].index
     arrCnts = np.array(df_tit[0:matsize]['count'])+2
@@ -1012,7 +1028,7 @@ def make_word_vis(main_df, figure_path, d_path):
     bars = ax3.plot(theta, arrCnts, alpha=1, linestyle='-', marker='o',
                    color='#377eb8', markersize=7, markerfacecolor='w',
                    markeredgecolor='#ff5148')
-    plt.axis('off')
+    ax3.axis('off')
     rotations = np.rad2deg(theta)
     y0,y1 = ax3.get_ylim()
     for x, bar, rotation, label in zip(theta, arrCnts, rotations, labs):
@@ -1033,34 +1049,20 @@ def make_word_vis(main_df, figure_path, d_path):
              color='k',linewidth=1, alpha=0.5, linestyle='--')
     ax3.plot((0, theta[-1]), (0, arrCnts[-1]),
              color='k',linewidth=1, alpha=0.5, linestyle='--')
-
-
-    ax4 = fig.add_subplot(224)
     ax_tit = sns.heatmap(words_tit_mat.astype(float),
                          cmap=cmap, mask = mask_tit,
                          linewidths=.5, cbar_kws={"shrink": 1,
                                                   'use_gridspec':True},
                          ax=ax4)
+    ax_tit.collections[0].colorbar.ax.yaxis.set_ticks_position('left')
+    ax_tit.collections[0].colorbar.outline.set_edgecolor('k')
+    ax_tit.collections[0].colorbar.outline.set_linewidth(1)
     for _, spine in ax1.spines.items():
         spine.set_visible(True)
     for _, spine in ax4.spines.items():
         spine.set_visible(True)
     sns.despine(ax=ax1)
     sns.despine(ax=ax4)
-
-    ax1.set_title('A.', loc='left', y=1.25,  **hfont, fontsize=22, x=0)
-    ax1.set_title("Word Co-occurrence: Abstracts",
-                  loc='center',y=1.1, **hfont, fontsize=18, x=.6)
-    ax2.set_title('B.', loc='left', y=0.975,  **hfont, fontsize=22, x=-.3)
-    ax2.set_title("Frequency distribution: Abstracts",
-                 loc='center',y=0.99, **hfont, fontsize=18)
-    ax3.set_title('C.', loc='left', y=0.975,  **hfont, fontsize=22, x=-.3)
-    ax3.set_title("Frequency distribution: Titles",
-                 loc='center',y=0.99, **hfont, fontsize=18,)
-    ax4.set_title('D.', loc='left', y=1.05,  **hfont, fontsize=22, x=0)
-    ax4.set_title("Word Co-occurrence: Titles",
-                  loc='center',y=1.1, **hfont, fontsize=18, x=.6)
-
     plt.savefig(os.path.join(figure_path, 'word_freq_cooc.svg'),
                 bbox_inches='tight')
     plt.savefig(os.path.join(figure_path, 'word_freq_cooc.pdf'),
