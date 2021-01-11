@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 import re
 import gender_guesser.detector as gender
@@ -68,6 +69,21 @@ def build_datasets(d_path):
     auth_df['gender_detector'] = auth_df['forename'].apply(lambda x : get_gender_detect(x, detector))
     auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('mostly_female', 'female')
     auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('mostly_male', 'male')
+
+
+    auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('andy', 'unknown')
+    auth_df['clean_gender'] = np.nan
+    for index, row in auth_df.iterrows():
+        if row['gender_guesser'] == row['gender_detector']:
+            auth_df.loc[index, 'clean_gender'] = row['gender_detector']
+        elif (row['gender_guesser'] == 'female') and (row['gender_detector'] == 'unknown'):
+            auth_df.loc[index, 'clean_gender'] = 'female'
+        elif (row['gender_guesser'] == 'unknown') and (row['gender_detector'] == 'female'):
+            auth_df.loc[index, 'clean_gender'] = 'female'
+        elif (row['gender_guesser'] == 'male') and (row['gender_detector'] == 'unknown'):
+            auth_df.loc[index, 'clean_gender'] = 'male'
+        elif (row['gender_guesser'] == 'unknown') and (row['gender_detector'] == 'male'):
+            auth_df.loc[index, 'clean_gender'] = 'male'
 
     auth_df['aff_orgs'] = auth_df['aff_orgs'].str.replace('Bangladesh Institute for Development Studies', 'Bangladesh Institute of Development Studies')
     auth_df['aff_orgs'] = auth_df['aff_orgs'].str.replace('Biomedical Res./Training Institute', 'Biomedical Research and Training Institute')

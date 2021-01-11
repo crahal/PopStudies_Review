@@ -2,7 +2,7 @@
 keys/elsevier_apikey
 src/R_Melinda/
 src/lda_stuff_come_back_to
-src/GuidedLDA
+src/GuidedLDA/
 src/mallet-2.0.8
 presentation/
 data/

@@ -31,6 +31,184 @@ csfont = {'fontname': 'Arial'}
 hfont = {'fontname': 'Arial'}
 
 
+import pandas as pd
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import sparse as sp
+import networkx as nx
+import random
+from networkx.drawing.nx_agraph import graphviz_layout
+from networkx.algorithms.isomorphism.isomorph import (
+    graph_could_be_isomorphic as isomorphic)
+from matplotlib.patches import Patch
+import matplotlib.lines as mlines
+
+
+def make_g_and_summarize(auth_df):
+    auth_df = auth_df[auth_df['doi'].notnull()]
+    author_papers = auth_df[auth_df['authorid'].notnull()]
+    authors_df = author_papers[['authorid', 'indexed_name']].drop_duplicates(subset=['authorid'])
+    int_p_id = dict(enumerate(list(author_papers['doi'].unique())))
+    int_a_id = dict(enumerate(list(author_papers['authorid'].unique())))
+    a_int_id = {authorId:intVal for intVal,authorId in int_a_id.items()}
+    p_int_id = {paperId:intVal for intVal,paperId in int_p_id.items()}
+    author_paper_tuples = list(zip(author_papers['authorid'], author_papers['doi']))
+    author_paper_tuples = [(a_int_id[t[0]],p_int_id[t[1]]) for t in author_paper_tuples]
+    AP = sp.csc_matrix((np.ones(len(author_paper_tuples)), zip(*author_paper_tuples)))
+    AA = AP.dot(AP.T)
+    AA = np.array(AA - np.diag(AA.diagonal()))
+    G = nx.from_numpy_matrix(AA, parallel_edges=True)
+    deg_measure = nx.degree(G)
+    cent_measure = nx.degree_centrality(G)
+    bet_measure = nx.betweenness_centrality(G)
+    authors_df['degree'] = authors_df['authorid'].apply(lambda l: deg_measure[a_int_id.get(l)])
+    authors_df['degree_cent'] = authors_df['authorid'].apply(lambda l: cent_measure[a_int_id.get(l)])
+    authors_df['degree_bet'] = authors_df['authorid'].apply(lambda l: bet_measure.get(a_int_id.get(l)))
+    Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
+    print('Edges in entire network: ' + str(G.number_of_edges()))
+    print('Nodes in entire network: ' + str(G.number_of_nodes()))
+    print('Density of entire network: ' + str(nx.density(G)))
+    print('Edges in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_edges()))
+    print('Nodes in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_nodes()))
+    print('Density of Giant Component: ' + str(nx.density(G.subgraph(Gcc[0]))))
+
+    auth_df['prismcoverdate'] = auth_df['prismcoverdate'].astype('datetime64[ns]')
+    time_df = pd.DataFrame(index=range(1947, 2021),
+                           columns=['whole_edges', 'whole_nodes', 'whole_density',
+                                    'giant_edges', 'giant_nodes', 'giant_density'])
+
+    for year in range(1, 75):
+        year_df = auth_df[auth_df['prismcoverdate'].dt.year<1947+year]
+        year_df = year_df[year_df['doi'].notnull()]
+        year_author_papers = year_df[year_df['authorid'].notnull()]
+        year_authors_df = year_author_papers[['authorid', 'indexed_name']].drop_duplicates(subset=['authorid'])
+        int_p_id = dict(enumerate(list(year_author_papers['doi'].unique())))
+        int_a_id = dict(enumerate(list(year_author_papers['authorid'].unique())))
+        a_int_id = {authorId:intVal for intVal,authorId in int_a_id.items()}
+        p_int_id = {paperId:intVal for intVal,paperId in int_p_id.items()}
+        author_paper_tuples = list(zip(year_author_papers['authorid'], year_author_papers['doi']))
+        author_paper_tuples = [(a_int_id[t[0]],p_int_id[t[1]]) for t in author_paper_tuples]
+        AP = sp.csc_matrix((np.ones(len(author_paper_tuples)), zip(*author_paper_tuples)))
+        AA = AP.dot(AP.T)
+        AA = np.array(AA - np.diag(AA.diagonal()))
+        G = nx.from_numpy_matrix(AA, parallel_edges=True)
+
+        time_df.loc[year+1946, 'whole_edges'] = G.number_of_edges()
+        time_df.loc[year+1946, 'whole_nodes'] = G.number_of_nodes()
+        time_df.loc[year+1946, 'whole_density'] = nx.density(G)
+        time_df.loc[year+1946, 'giant_edges'] = G.subgraph(Gcc[0]).number_of_edges()
+        time_df.loc[year+1946, 'giant_nodes'] = G.subgraph(Gcc[0]).number_of_nodes()
+        time_df.loc[year+1946, 'giant_density'] = nx.density(G.subgraph(Gcc[0]))
+    return G, authors_df, author_papers
+
+
+def plot_G0_and_G1(G, authors_df, author_papers, fig_path):
+    fig = plt.figure(figsize=(12, 7), tight_layout=True)
+    ax1 = plt.subplot2grid((1, 2), (0, 0), rowspan=1, colspan=1)
+    ax2 = plt.subplot2grid((1, 2), (0, 1), rowspan=1, colspan=1)
+    legend_elements = [mlines.Line2D([], [], color=(215/255,48/255,39/255, 0.8),
+                                     marker='o', linestyle='None',
+                                     markersize=10, label='Female', markeredgecolor='k',
+                                     markeredgewidth=0.5),
+                       mlines.Line2D([], [], color=(69/255,117/255,180/255, 0.8),
+                                     marker='o', linestyle='None',
+                                     markersize=10, label='Male', markeredgecolor='k',
+                                     markeredgewidth=0.5),
+                       mlines.Line2D([], [], color=(211/255,211/255,211/255, 0.8),
+                                     marker='o', linestyle='None',
+                                     markersize=10, label='Unknown', markeredgecolor='k',
+                                     markeredgewidth=0.5)]
+    Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
+    G0 = G.subgraph(Gcc[0])
+    pos = graphviz_layout(G0, prog="neato", args='-Gnodesep=0.5')
+    C = (G.subgraph(c) for c in nx.connected_components(G0))
+    gend_df = pd.merge(authors_df[['authorid', 'degree']].reset_index(),
+                       author_papers[['authorid',
+                                      'clean_gender']].drop_duplicates(),
+                       how='left', left_on='authorid', right_on='authorid')
+    color_list=[]
+    size_list=[]
+    for g in C:
+        for c in g.nodes:
+            if gend_df.loc[c, 'clean_gender'] =='female':
+                color_list.append((215/255,48/255,39/255))
+            elif gend_df.loc[c, 'clean_gender'] =='male':
+                color_list.append((69/255,117/255,180/255))
+            else:
+                color_list.append((211/255,211/255,211/255))
+            size_list.append(10+(2*gend_df.loc[c, 'degree']))
+        nx.draw(g, pos, node_size=size_list, node_color=color_list,
+                vmin=0.0, vmax=1.0, with_labels=False, ax=ax1, alpha=0.8,
+                width=0.5)
+    ax1.set_title('A.', fontsize=24, loc='left', y=0.98, x=0.1)
+    G1 = G.subgraph(Gcc[1])
+    pos = graphviz_layout(G1, prog="neato")
+    C = (G.subgraph(c) for c in nx.connected_components(G1))
+    color_list=[]
+    size_list=[]
+    for g in C:
+        for c in g.nodes:
+            if gend_df.loc[c, 'clean_gender'] =='female':
+                color_list.append((215/255,48/255,39/255))
+            elif gend_df.loc[c, 'clean_gender'] =='male':
+                color_list.append((69/255,117/255,180/255))
+            else:
+                color_list.append((211/255,211/255,211/255))
+            size_list.append(20+(10*gend_df.loc[c, 'degree']))
+        nx.draw(g, pos, node_size=size_list, node_color=color_list,
+                vmin=0.0, vmax=1.0, with_labels=False, ax=ax2, alpha=0.8,
+                width=0.5)
+    ax2.set_title('B.', fontsize=24, loc='left', y=0.98, x=0.1)
+    ax2.legend(handles=legend_elements, loc='lower right', frameon=True,
+               fontsize=12,framealpha=1, edgecolor='k', bbox_to_anchor=(1, 0.1))
+    plt.savefig(os.path.join(fig_path, 'sub_networks.pdf'),
+                bbox_inches='tight')
+    plt.savefig(os.path.join(fig_path, 'sub_networks.png'),
+                bbox_inches='tight', dpi=600)
+    plt.savefig(os.path.join(fig_path, 'sub_networks.svg'),
+                bbox_inches='tight')
+
+
+def plot_G(G, fig_path):
+    fig = plt.figure(figsize=(12, 8))
+    ax1 = plt.subplot2grid((1, 1), (0, 0), rowspan=1, colspan=1)
+    pos = graphviz_layout(G, prog="neato")
+    C = (G.subgraph(c) for c in nx.connected_components(G))
+    colors1 = ['#d73027', '#3ace3a', '#fc8d59',
+               '#fee090', '#e0f3f8', '#91bfdb',
+               '#4575b4']
+    for g in C:
+        if nx.number_of_nodes(g) == 1:
+            c = colors1[0]
+        elif nx.number_of_nodes(g) == 2:
+            c = colors1[1]
+        elif nx.number_of_nodes(g) == 3:
+            c = colors1[2]
+        elif nx.number_of_nodes(g) == 4:
+            c = colors1[3]
+        elif (nx.number_of_nodes(g)>4) and nx.number_of_nodes(g)<8:
+            c = colors1[4]
+        elif (nx.number_of_nodes(g)>7) and nx.number_of_nodes(g)<400:
+           c = colors1[5]
+        elif (nx.number_of_nodes(g)>400):
+            c = colors1[6]
+        nx.draw(g, pos, node_size=20, node_color=c, vmin=0.0,
+                vmax=1.0, with_labels=False, ax=ax1)
+    ax1.set_title('A.', fontsize=24, loc='left', y=0.98, x=0.05)
+    #temp_df = pd.DataFrame(authors_df.groupby(['degree'])['degree'].count()).rename({'degree':'count'}, axis=1)
+    #temp_df['count'] = temp_df['count']/temp_df['count'].sum()
+    #temp_df['count'].plot(markersize=8, marker='o', loglog=True, linewidth=0, markerfacecolor='w', ax=ax2)
+    #time_df[['whole_nodes', 'whole_edges']][:].plot(ax=ax3)
+    plt.savefig(os.path.join(fig_path, 'networks.pdf'),
+                bbox_inches='tight')
+    plt.savefig(os.path.join(fig_path, 'networks.png'),
+                bbox_inches='tight', dpi=600)
+    plt.savefig(os.path.join(fig_path, 'networks.svg'),
+                bbox_inches='tight')
+
+
 def make_mf_topics(auth_df, main_df, d_path):
     topic_df_long = pd.DataFrame(columns = ['DOI', 'Topic',])
     counter = 0 # this is bad!
@@ -153,7 +331,7 @@ def make_mwc(main_df):
     type_df = type_df[type_df.index!='6']
     type_df = type_df.reindex(index=type_df.index[::-1])
     type_df['Men_Count'] = type_df['Men_Count'].fillna(0)
-    fig = plt.figure(figsize=(10, 6), tight_layout=True)
+    fig = plt.figure(figsize=(12, 7), tight_layout=True)
     ax1 = plt.subplot2grid((12, 12), (0, 0), colspan=3, rowspan=12)
     ax2 = plt.subplot2grid((12, 12), (0, 3), colspan=3, rowspan=12)
     ax3 = plt.subplot2grid((12, 12), (0, 6), colspan=3, rowspan=12)
@@ -184,18 +362,67 @@ def make_mwc(main_df):
     ax1.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     ax2.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     ax3.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+    ax1.yaxis.set_tick_params(labelsize=12)
+    ax2.yaxis.set_tick_params(labelsize=12)
+    ax3.yaxis.set_tick_params(labelsize=12)
+    ax4.yaxis.set_tick_params(labelsize=12)
     ax2.set_ylabel('')
     ax3.set_ylabel('')
     ax4.set_ylabel('')
-    ax1.set_ylabel('Topic Studied', fontsize=13)
-    ax1.set_xlabel('Focus on: Men', fontsize=13)
-    ax2.set_xlabel('Focus on: Women', fontsize=13)
-    ax3.set_xlabel('Focus on: Children', fontsize=13)
-    ax4.set_xlabel('Total Number of Papers', fontsize=13)
-    ax1.set_title('A.', fontsize=24, loc='left', y=1.02, x=-.1)
-    ax2.set_title('B.', fontsize=24, loc='left', y=1.02, x=-.1)
-    ax3.set_title('C.', fontsize=24, loc='left', y=1.02, x=-.1)
-    ax4.set_title('D.', fontsize=24, loc='left', y=1.02, x=-.1)
+    ax1.set_ylabel('Topic Studied', fontsize=13, **csfont)
+    ax1.set_xlabel('Focus on: Men', fontsize=13, **csfont)
+    ax2.set_xlabel('Focus on: Women', fontsize=13, **csfont)
+    ax3.set_xlabel('Focus on: Children', fontsize=13, **csfont)
+    ax4.set_xlabel('Total Number of Papers', fontsize=13, **csfont)
+    ax1.set_title('A.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+    ax2.set_title('B.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+    ax3.set_title('C.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+    ax4.set_title('D.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+
+    rects = ax1.patches
+    labels = type_df['Men_Count'].to_list()
+    for rect, label in zip(rects, labels):
+        if label < 10:
+            rounder = 2
+        else:
+            rounder = 1
+        height = rect.get_width()
+        ax1.text(height + 2.8, (rect.get_y() + rect.get_height() / 2)-.2,
+                    str(round(label, rounder))+'%', ha='center', va='bottom')
+
+    rects = ax2.patches
+    labels = type_df['Women_Count'].to_list()
+    for rect, label in zip(rects, labels):
+        if label < 10:
+            rounder = 2
+        else:
+            rounder = 1
+        height = rect.get_width()
+        ax2.text(height + 4, (rect.get_y() + rect.get_height() / 2)-.2,
+                 str(round(label, rounder))+'%', ha='center', va='bottom')
+
+    rects = ax3.patches
+    labels = type_df['Children_Count'].to_list()
+    for rect, label in zip(rects, labels):
+        if label < 10:
+            rounder = 2
+        else:
+            rounder = 1
+        height = rect.get_width()
+        ax3.text(height + 7.5, (rect.get_y() + rect.get_height() / 2)-.2,
+                 str(round(label, rounder))+'%', ha='center', va='bottom')
+
+    rects = ax4.patches
+    labels = type_df['All_Count'].to_list()
+    for rect, label in zip(rects, labels):
+        if label < 10:
+            rounder = 3
+        else:
+            rounder = 2
+        height = rect.get_width()
+        ax4.text(height + 35, (rect.get_y() + rect.get_height() / 2)-.2,
+                 str(label), ha='center', va='bottom')
+
     sns.despine()
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
     plt.savefig(os.path.join(fig_path, 'MWC_Topics.pdf'),
@@ -231,9 +458,7 @@ def headline_topics(main_df):
                                                                        expand=False)
     pattern = '(\d{4})'
     topic_df_long['Year'] = topic_df_long['Date'].str.extract(pattern)
-
-    colors = ['#fff2ae', '#cbd5e8', '#fdcdac', '#b3e2cd', '#f4cae4', '#e6f5c9']
-    colors1 = ['#d73027', '#fc8d59', '#fee090', '#ffffbf', '#e0f3f8', '#91bfdb', '#4575b4']
+    colors1 = ['#e31a1c', '#a6cee3', '#6a3d9a', '#33a02c', '#ff7f00', '#1f78b4', '#b15928']
     fig = plt.figure(figsize=(13, 8), tight_layout=True)
     ax7 = plt.subplot2grid((7, 32), (6, 0), rowspan=1, colspan=16)
     ax1 = plt.subplot2grid((7, 32), (0, 0), rowspan=1, colspan=16)
@@ -249,31 +474,31 @@ def headline_topics(main_df):
 
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '1'],
-                  s=2.75, orient='h', ax=ax1,
+                  s=2.5, orient='h', ax=ax1,
                   color=colors1[0], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '2'],
-                  s=2.75, orient='h', ax=ax2,
+                  s=3, orient='h', ax=ax2,
                   color=colors1[1], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '3'],
-                  s=2.75, orient='h', ax=ax3,
+                  s=3, orient='h', ax=ax3,
                   color=colors1[2], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '4'],
-                  s=2.75, orient='h', ax=ax4,
+                  s=2.85, orient='h', ax=ax4,
                   color=colors1[3], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '5'],
-                  s=2.75, orient='h', ax=ax5,
+                  s=3, orient='h', ax=ax5,
                   color=colors1[4], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '6'],
-                  s=2.75, orient='h', ax=ax6,
+                  s=3, orient='h', ax=ax6,
                   color=colors1[5], linewidth=0.3)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '7'],
-                  s=2.75, orient='h', ax=ax7,
+                  s=3, orient='h', ax=ax7,
                   color=colors1[6], linewidth=0.3)
 
     for axx in [ax1, ax2, ax3, ax4, ax5, ax6]:
@@ -282,6 +507,8 @@ def headline_topics(main_df):
         axx.set_xlabel('')
         axx.set_ylabel('')
         sns.despine(ax=axx, top=True, left=False, right=True, bottom=True)
+        axx.set_xlim(topic_df_long['prismcoverdate'].min(), topic_df_long['prismcoverdate'].max())
+    ax7.set_xlim(topic_df_long['prismcoverdate'].min(), topic_df_long['prismcoverdate'].max())
 
     import matplotlib.dates as mdates
     for index, row in topic_df.iterrows():
@@ -330,72 +557,73 @@ def headline_topics(main_df):
     sns.despine(ax=ax7, top=True, left=False, right=True, bottom=False)
     sns.despine(ax=ax8, top=True, left=True, right=False, bottom=False)
     ax1.set_title('A.', fontsize=24, loc='left', y=1.035, x=0)
-    ax8.set_title('B.', fontsize=24, loc='left', y=1.035, x=0);
+    ax8.set_title('B.', fontsize=24, loc='left', y=1.00, x=0);
     ax7.set_xlabel('')
     ax7.set_ylabel('')
     ax8.yaxis.set_label_position("right")
     ax8.set_ylabel('Citation Count')
-    colors1 = ['#77dd77', '#d73027', '#fc8d59', '#fee090', '#e0f3f8', '#91bfdb', '#4575b4']
-    legend_elements = [Patch(facecolor=(215/255, 48/255, 39/255, 0.3),
+    legend_elements = [Patch(facecolor=(227/255,26/255,28/255, 0.3),
                              lw=0.5, label="Fertility", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(252/255, 135/255, 89/255, 0.3),
+                       Patch(facecolor=(166/255,206/255,227/255, 0.3),
                              lw=0.5, label="Mortality", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(254/255, 224/255, 144/255, 0.3),
+                       Patch(facecolor=(106/255,61/255,154/255, 0.3),
                              lw=0.5, label="Migration", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(255/255, 255/255, 191/255, 0.3),
+                       Patch(facecolor=(51/255,160/255,44/255, 0.3),
                              lw=0.5, label="Macro", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(224/255, 243/255, 248/255, 0.3),
+                       Patch(facecolor=(255/255,127/255,0, 0.3),
                              lw=0.5, label="Methods", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(145/255, 191/255, 219/255, 0.3),
+                       Patch(facecolor=(31/255,120/255,180/255, 0.3),
                              lw=0.5, label="Family", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(69/255, 121/255, 180/255, 0.3),
+                       Patch(facecolor=(177/255,89/255,40/255, 0.3),
                              lw=0.5, label="Other", edgecolor=(0, 0, 0, 1)),
                        Patch(facecolor=(211/255, 211/255, 211/255, 0.3),
                              lw=0.5, label="Multiple", edgecolor=(0, 0, 0, 1))]
     ax8.legend(handles=legend_elements, loc='upper left', frameon=True,
-               fontsize=10)
+               fontsize=10,framealpha=1)
     ax8.annotate("Bumpass and Lu (2000)\nCitation Count: 728\nTopic: 6a",
-                 xy=(7300, 728), xycoords='data',
-                 xytext=(7315, 580), fontsize=8, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-#    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a and 4c",
-#                 xy=(721150, 704), xycoords='data',
-#                 xytext=(723000, 550), fontsize=8, textcoords='data',
-#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25),
-#                 arrowprops=dict(arrowstyle="->",
-#                                 connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-#    ax8.annotate("Cleland and Wilson (1987)\nCitation Count: 433\nTopic: 1b",
-#                 xy=(725500, 443), xycoords='data',
-#                 xytext=(729000, 340), fontsize=8, textcoords='data',
-#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-#    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a:4b",
-#                 xy=(722500, 310), xycoords='data',
-#                 xytext=(717000, 450), fontsize=8, textcoords='data',
-#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-#    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c:2a",
-#                 xy=(716500, 265), xycoords='data',
-#                 xytext=(712000, 340), fontsize=8, textcoords='data',
-#                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25),
-#                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-    ax1.set_ylabel('Fertility', rotation=90)
+                 xy=(11000, 728), xycoords='data', **csfont,
+                 xytext=(10750, 580), fontsize=9, textcoords='data',
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth = 0.25, color='k'),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
+    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a and 4c",
+                 xy=(2000, 718), xycoords='data', **csfont,
+                 xytext=(2750, 570), fontsize=9, textcoords='data',
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
+    ax8.annotate("Cleland and Wilson (1987)\nCitation Count: 433\nTopic: 1b",
+                 xy=(6200, 442), xycoords='data', **csfont,
+                 xytext=(9050, 350), fontsize=9, textcoords='data',
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
+    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a:4b",
+                 xy=(3300, 300), xycoords='data', **csfont,
+                 xytext=(-3200, 450), fontsize=9, textcoords='data',
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
+    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c:2a",
+                 xy=(-2800, 260), xycoords='data', **csfont,
+                 xytext=(-6500, 342), fontsize=9, textcoords='data',
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
+
+    ax1.set_ylabel('Fertility', rotation=90, **csfont)
     ax1.set_yticklabels([''])
-    ax2.set_ylabel('Mortality', rotation=90)
+    ax1.margins(y=-0.49)
+    ax2.set_ylabel('Mortality', rotation=90, **csfont)
     ax2.set_yticklabels([''])
-    ax3.set_ylabel('Migration', rotation=90)
+    ax3.set_ylabel('Migration', rotation=90, **csfont)
     ax3.set_yticklabels([''])
-    ax4.set_ylabel('Macro', rotation=90)
+    ax4.set_ylabel('Macro', rotation=90, **csfont)
     ax4.set_yticklabels([''])
-    ax5.set_ylabel('Methods', rotation=90)
+    ax5.set_ylabel('Methods', rotation=90, **csfont)
     ax5.set_yticklabels([''])
-    ax6.set_ylabel('Family', rotation=90)
+    ax6.set_ylabel('Family', rotation=90, **csfont)
     ax6.set_yticklabels([''])
-    ax7.set_ylabel('Other', rotation=90)
+    ax7.set_ylabel('Other', rotation=90, **csfont)
     ax7.set_yticklabels([''])
-    ax8.set_ylim(-25, 790)
+    ax8.set_ylim(-25, 800)
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
+    plt.subplots_adjust(wspace=.10)
     plt.savefig(os.path.join(fig_path, 'topics_over_time.pdf'),
                 bbox_inches='tight')
     plt.savefig(os.path.join(fig_path, 'topics_over_time.png'),
@@ -490,60 +718,60 @@ def gender_over_time(auth_df):
     ax1.plot(gender_time_df.index, gender_time_df['pc_detect_fem_10']*100, color=color[0])
 
     ax2.plot(gender_time_df.index, gender_time_df['pc_guess_fem_10_lower']*100, color=color[1],
-              linewidth=0.3, linestyle='--', dashes=(12, 6))
+             linewidth=0.3, linestyle='--', dashes=(12, 6))
     ax2.plot(gender_time_df.index, gender_time_df['pc_guess_fem_10_upper']*100, color=color[1],
              linewidth=0.3, linestyle='--', dashes=(12, 6))
     ax2.plot(gender_time_df.index, gender_time_df['pc_guess_fem_10']*100, color=color[0])
     ax1.set_ylim(10, 55)
     ax2.set_ylim(10, 55)
-    ax1.set_ylabel('Female Authorship: Ten Year Rolling Interval')
-    ax2.set_ylabel('Female Authorship: Ten Year Rolling Interval')
+    ax1.set_ylabel('Female Authorship: Ten Year Rolling Interval', **csfont, fontsize=13)
+    ax2.set_ylabel('Female Authorship: Ten Year Rolling Interval', **csfont, fontsize=13)
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     ax2.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
     ax2.fill_between(gender_time_df.index.to_list(),
                      gender_time_df['pc_guess_fem_10_lower'].astype(float)*100,
                      gender_time_df['pc_guess_fem_10_upper'].astype(float)*100,
-                     alpha=0.1, color=color[1])
+                     alpha=0.2, color=color[1])
     ax1.fill_between(gender_time_df.index.to_list(),
                      gender_time_df['pc_detect_fem_10_lower'].astype(float)*100,
                      gender_time_df['pc_detect_fem_10_upper'].astype(float)*100,
-                     alpha=0.1, color=color[1])
+                     alpha=0.2, color=color[1])
     legend_elements = [Line2D([0], [0], color=color[0], lw=1,
                        label='Detector: F/(M+F)', alpha=1),
                        Patch(facecolor=(255/255, 185/255, 78/255, 0.3),
                              lw=0.5, label="Detector: CI's", edgecolor=(0, 0, 0, 1))]
     ax1.legend(handles=legend_elements, loc='upper left', frameon=False,
-               fontsize=11)
+               fontsize=12)
     legend_elements = [Line2D([0], [0], color=color[0], lw=1,
                        label='Guesser: F/(M+F)', alpha=1),
                        Patch(facecolor=(255/255, 185/255, 78/255, 0.3),
                              lw=0.5, label="Guesser: CI's", edgecolor=(0, 0, 0, 1))]
     ax2.legend(handles=legend_elements, loc='upper left', frameon=False,
-               fontsize=11)
+               fontsize=12)
     sns.despine()
     ax1.xaxis.grid(linestyle='--', alpha=0.2)
     ax1.yaxis.grid(linestyle='--', alpha=0.2)
     ax2.xaxis.grid(linestyle='--', alpha=0.2)
     ax2.yaxis.grid(linestyle='--', alpha=0.2)
-    ax1.set_title('A.', fontsize=24, loc='left', y=1.035, x=0)
-    ax2.set_title('B.', fontsize=24, loc='left', y=1.035, x=0);
+    ax1.set_title('A.', fontsize=24, loc='left', y=1.035, x=0, **csfont)
+    ax2.set_title('B.', fontsize=24, loc='left', y=1.035, x=0, **csfont);
 
     early_annot_guesser = len(auth_df_g[(auth_df_g['Year'] <= 1984) & (auth_df_g['gender_guesser'] == 'female')])/\
                           len(auth_df_g[(auth_df_g['Year'] <= 1984) & ((auth_df_g['gender_guesser'] == 'female') |
                                                                  (auth_df_g['gender_guesser'] == 'male'))])
-    late_annot_guesser = len(auth_df_g[(auth_df_g['Year']>1984) & (auth_df_g['gender_guesser'] == 'female')])/\
-                         len(auth_df_g[(auth_df_g['Year']>1984) & ((auth_df_g['gender_guesser'] == 'female') |
+    late_annot_guesser = len(auth_df_g[(auth_df_g['Year'] > 1984) & (auth_df_g['gender_guesser'] == 'female')])/\
+                         len(auth_df_g[(auth_df_g['Year'] > 1984) & ((auth_df_g['gender_guesser'] == 'female') |
                                                                (auth_df_g['gender_guesser'] == 'male'))])
     ax2.axhline(y=early_annot_guesser*100, xmax=0.44, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax2.axhline(y=late_annot_guesser*100, xmin=0.44, xmax=1, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
-    ax2.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_guesser,3)*100) + '%',
-                 xy=(1984, early_annot_guesser*100), xycoords='data',
-                 xytext=(1995, (early_annot_guesser*100)-10), fontsize=8, textcoords='data',
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-    ax2.annotate("1984-2020 backward\nlooking average: " + str(round(late_annot_guesser,3)*100) + '%',
-                 xy=(1982, late_annot_guesser*100), xycoords='data',
-                 xytext=(1957, (late_annot_guesser*100)-6.5), fontsize=8, textcoords='data',
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+    ax2.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_guesser, 3)*100) + '%',
+                 xy=(1984, early_annot_guesser*100), xycoords='data', **csfont,
+                 xytext=(1995, (early_annot_guesser*100)-10), fontsize=10, textcoords='data',
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.75, color='k'))
+    ax2.annotate("1984-2020 backward\nlooking average: " + str(round(late_annot_guesser,4)*100) + '%',
+                 xy=(1982, late_annot_guesser*100), xycoords='data', **csfont,
+                 xytext=(1957, (late_annot_guesser*100)-5.5), fontsize=10, textcoords='data',
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.75, color='k'))
 
     early_annot_detecter = len(auth_df_g[(auth_df_g['Year'] <= 1984) & (auth_df_g['gender_detector'] == 'female')])/\
                            len(auth_df_g[(auth_df_g['Year'] <= 1984) & ((auth_df_g['gender_detector'] == 'female') |
@@ -553,14 +781,14 @@ def gender_over_time(auth_df):
                                                                     (auth_df_g['gender_detector'] == 'male'))])
     ax1.axhline(y=early_annot_detecter*100, xmax=0.44, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
     ax1.axhline(y=late_annot_detecter*100, xmin=0.44, xmax=1, color='k', linestyle='--', alpha=0.75, linewidth=0.75)
-    ax1.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_detecter,3)*100) + '%',
-                 xy=(1984, early_annot_detecter*100), xycoords='data',
-                 xytext=(1995, (early_annot_detecter*100)-10), fontsize=8, textcoords='data',
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
-    ax1.annotate("1984-2020 backward\nlooking average: " + str(round(late_annot_detecter,3)*100) + '%',
+    ax1.annotate("1947-1984 backward\nlooking average: " + str(round(early_annot_detecter,4)*100) + '%',
+                 xy=(1984, early_annot_detecter*100), xycoords='data', **csfont,
+                 xytext=(1995, (early_annot_detecter*100)-10), fontsize=10, textcoords='data',
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.75, color='k'))
+    ax1.annotate("1984-2020 backward\nlooking average: " + str(round(late_annot_detecter,4)*100) + '%',
                  xy=(1982, late_annot_detecter*100), xycoords='data',
-                 xytext=(1957, (late_annot_detecter*100)-6.5), fontsize=8, textcoords='data',
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5))
+                 xytext=(1957, (late_annot_detecter*100)-5.5), fontsize=10, textcoords='data', **csfont,
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.75, color='k'))
     plt.tight_layout(pad=3)
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
     plt.savefig(os.path.join(fig_path, 'gender_over_time.pdf'),
@@ -600,18 +828,21 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
 
 
 def make_affil_plot(main_df, auth_df, d_path, figure_path):
-    # preamble
     titlesize=15
     markersize = 10
-    csfont = {'fontname': 'Arial'}
-    hfont = {'fontname': 'Arial'}
     region_lookup = pd.read_csv(os.path.join(d_path, 'support', 'region_lookup.csv'))
     country_count = make_country_count(auth_df)
     gdf = make_gdf(country_count, os.path.join(d_path, 'shapefiles',
                                                'global.shp'))
     gdf['count'] = gdf['count'].fillna(0)
     gdf= gdf[gdf['CNTRY_NAME']!='Antarctica']
-    islands_to_remove = ['Solomon Islands', 'Bouvet Island', 'Cayman Islands', 'Pacific Islands (Palau)', 'Cook Islands', 'Paracel Islands', 'Pitcairn Islands', 'Cocos (Keeling) Islands', 'Northern Mariana Islands', 'Jarvis Island', 'Falkland Islands (Islas Malvinas)', 'Faroe Islands', 'Baker Island', 'Glorioso Islands', 'Heard Island & McDonald Islands', 'Howland Island', 'Juan De Nova Island', 'Christmas Island',  'Midway Islands', 'Norfolk Island', 'Spratly Islands',  'Marshall Islands', 'Turks and Caicos Islands', 'British Virgin Islands', 'Virgin Islands', 'Wake Island']
+    islands_to_remove = ['Solomon Islands', 'Bouvet Island', 'Cayman Islands', 'Pacific Islands (Palau)',
+                         'Cook Islands', 'Paracel Islands', 'Pitcairn Islands', 'Cocos (Keeling) Islands',
+                         'Northern Mariana Islands', 'Jarvis Island', 'Falkland Islands (Islas Malvinas)',
+                         'Faroe Islands', 'Baker Island', 'Glorioso Islands', 'Heard Island & McDonald Islands',
+                         'Howland Island', 'Juan De Nova Island', 'Christmas Island',  'Midway Islands',
+                         'Norfolk Island', 'Spratly Islands',  'Marshall Islands', 'Turks and Caicos Islands',
+                         'British Virgin Islands', 'Virgin Islands', 'Wake Island']
     for island in islands_to_remove:
         gdf= gdf[gdf['CNTRY_NAME']!=island]
     region_count = make_region(country_count, region_lookup, d_path)
@@ -624,10 +855,10 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aff_count = make_aff_count(auth_df)
 
     fig = plt.figure(figsize=(14, 10), tight_layout=True)
-    ax1 = plt.subplot2grid((10, 3), (0, 0), colspan=1, rowspan=4)
-    ax2 = plt.subplot2grid((10, 3), (0, 1), colspan=1, rowspan=4)
-    ax4 = plt.subplot2grid((10, 3), (0, 2), colspan=1, rowspan=4)
-    ax3 = plt.subplot2grid((10, 3), (4, 0), colspan=3, rowspan=6)
+    ax1 = plt.subplot2grid((10, 11), (0, 1), rowspan=4, colspan=3)
+    ax2 = plt.subplot2grid((10, 11), (0, 4), rowspan=4, colspan=3)
+    ax4 = plt.subplot2grid((10, 11), (0, 7), rowspan=4, colspan=3)
+    ax3 = plt.subplot2grid((10, 11), (4, 0), rowspan=6, colspan=11)
 
     # make pie
     region_count_short.index = region_count_short.index.str.replace('NORTHERN AMERICA', 'N. America')
@@ -638,30 +869,34 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
                                                  'Asia (Ex. Near East)',
                                                  'W. Europe', 'Other', 'N. America']]
     labels = region_count_short.index
-
-
     sizes = region_count_short.tolist()
-    colors = ['#f4cae4','#e6f5c9', '#b3e2cd', '#cbd5e8', '#fff2ae', '#fdcdac']
-    explode = (0.06, 0.06, 0.07, 0.08, 0.09, 0.10)
-    ax1.pie(sizes, explode=explode, labels=labels, colors=colors,
-            wedgeprops=dict(width=0.225), autopct='%1.1f%%', shadow=False,
-            startangle=200)
+    colors = ['#f4cae4', '#e6f5c9', '#b3e2cd', '#cbd5e8', '#fff2ae', '#fdcdac']
+    colors1 = ['#d73027', '#fc8d59', '#fee090', '#ffffbf', '#a6cee3', '#1f78b4', '#4575b4']
+    explode = (0.115, 0.115, 0.115, 0.115, 0.115, 0.115)
+    wedges, labels, autopct  = ax1.pie(sizes, explode=explode, labels=labels, colors=colors1[0:6],
+                                       wedgeprops=dict(width=0.225), autopct='%1.1f%%', shadow=False,
+                                       startangle=200, textprops={'fontsize': 12})
     wedges = [patch for patch in ax1.patches if isinstance(patch, patches.Wedge)]
     for w in wedges:
-        w.set_linewidth(0.75)
+        w.set_linewidth(0.90)
         w.set_edgecolor('k')
-    centre_circle = plt.Circle((0,0), 0.75, color='black', fc='white',linewidth=.25)
+        w.set_alpha(0.7)
+    centre_circle = plt.Circle((0, 0), 0.75, color='black', fc='white', linewidth=.25)
     ax1.axis('equal')
 
     # make tsplot
     time_df['affiliations'] = time_df['affiliations']/time_df['affiliations'][2020]
     time_df['countries'] = time_df['countries']/time_df['countries'][2020]
     ax2.step(y=time_df['affiliations'].astype(float), label='Affiliations',
-             x=time_df.index.astype(int), color = '#5172b2')
+             x=time_df.index.astype(int), color = '#fc8d59', alpha=0.8)
     ax2.step(y=time_df['countries'].astype(float), label='Countries',
-             x=time_df.index.astype(int), color='#fa7c26')
-    ax2.legend(loc='upper left', edgecolor='k', frameon=False, fontsize=11, ncol=1)
-    ax2.set_ylabel('Cumulative fraction of contributions')
+             x=time_df.index.astype(int), color='#1f78b4', alpha=0.8)
+    legend = ax2.legend(loc='upper left', edgecolor='k', frameon=True, fontsize=11, ncol=1, framealpha=1)
+    ax2.xaxis.grid(linestyle='--', alpha=0.5)
+    ax2.yaxis.grid(linestyle='--', alpha=0.5)
+
+    legend.get_frame().set_linewidth(0.5)
+    ax2.set_ylabel('Cumulative fraction of contributions', fontsize=12, **csfont)
     #make bargraph
     aff_count['aff_orgs'] = aff_count['aff_orgs'].str.replace('University of Pennsylvania', 'U. Penn')
     aff_count['aff_orgs'] = aff_count['aff_orgs'].str.replace('University of California', 'U. Cal')
@@ -670,46 +905,45 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aff_series = aff_count[0:10].set_index('aff_orgs')
     aff_series = aff_series.sort_values(by='count', ascending=True)['count']
     y_pos = np.arange(len(aff_series))
-    aa = ax4.barh(y_pos, aff_series.tolist(), edgecolor='k', alpha=0.8)
-    aa[1].set_color('#fdcdac')
-    aa[1].set_edgecolor('k')
-    aa[0].set_color('#fff2ae')
+    aa = ax4.barh(y_pos, aff_series.tolist(), edgecolor='k', alpha=0.5)
+    aa[0].set_color('#ffffbf')
     aa[0].set_edgecolor('k')
-    aa[2].set_color('#fdcdac')
+    aa[1].set_color('#1f78b4')
+    aa[1].set_edgecolor('k')
+    aa[2].set_color('#1f78b4')
     aa[2].set_edgecolor('k')
-
-    aa[3].set_color('#fdcdac')
+    aa[3].set_color('#1f78b4')
     aa[3].set_edgecolor('k')
-    aa[5].set_color('#fff2ae')
+    aa[4].set_color('#fc8d59')
+    aa[4].set_edgecolor('k')
+    aa[5].set_color('#ffffbf')
     aa[5].set_edgecolor('k')
+    aa[6].set_color('#fc8d59')
+    aa[6].set_edgecolor('k')
+    aa[7].set_color('#fc8d59')
+    aa[7].set_edgecolor('k')
+    aa[8].set_color('#fc8d59')
+    aa[8].set_edgecolor('k')
+    aa[9].set_color('#fc8d59')
+    aa[9].set_edgecolor('k')
+    ax4.yaxis.grid(linestyle='--', alpha=0.5)
+    ax4.xaxis.grid(linestyle='--', alpha=0.5)
 
     ax4.yaxis.set_major_locator(mtick.FixedLocator(range(0, len(aff_series))))
     ax4.set_yticklabels(aff_series.index)
     ax = ax4.set_ylabel('') # ?
     ax4.set_yticks(np.arange(len(aff_series)))
 
-    aa[4].set_color('#cbd5e8')
-    aa[4].set_edgecolor('k')
-
-    aa[6].set_color('#cbd5e8')
-    aa[6].set_edgecolor('k')
-    aa[7].set_color('#cbd5e8')
-    aa[7].set_edgecolor('k')
-    aa[8].set_color('#cbd5e8')
-    aa[8].set_edgecolor('k')
-    aa[9].set_color('#cbd5e8')
-    aa[9].set_edgecolor('k')
     rects = ax4.patches
     for rect, label in zip(rects, aff_series.tolist()):
-
         x_value = rect.get_width()
         y_value = rect.get_y() + rect.get_height() / 2
-        ax4.text(x_value+8, y_value-.225, str(round((label/aff_count['count'].sum())*100, 2)) + '%' ,
+        ax4.text(x_value+10, y_value-.225, str(round((label/aff_count['count'].sum())*100, 2)) + '%' ,
                 ha='center', va='bottom')
-    blue_patch = patches.Patch(facecolor='#fdcdac', edgecolor= 'k', label='US')
-    red_patch = patches.Patch(facecolor='#cbd5e8', edgecolor= 'k', label='Europe')
-    yellow_patch = patches.Patch(facecolor='#fff2ae', edgecolor= 'k', label='Int.')
-    ax4.legend(handles=[red_patch, blue_patch, yellow_patch], frameon=False)
+    blue_patch = patches.Patch(facecolor='#fdcdac', edgecolor= 'k', label='US', linewidth=0.75)
+    red_patch = patches.Patch(facecolor='#cbd5e8', edgecolor= 'k', label='Europe', linewidth=0.75)
+    yellow_patch = patches.Patch(facecolor='#fff2ae', edgecolor= 'k', label='International', linewidth=0.75)
+    ax4.legend(handles=[red_patch, blue_patch, yellow_patch], frameon=True, framealpha=1, edgecolor='k')
 
     # make choro
     cmap = LinearSegmentedColormap.from_list('mycmap', colors)
@@ -725,18 +959,23 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     gdf['count_cat'] = np.where(gdf['count']>50,'7', gdf['count_cat'])
     gdf.plot(ax=ax3, color='white', edgecolor='black', linewidth=0.35);
     gdf.plot(ax=ax3, color='None', edgecolor='black', alpha=0.2);
-    bb = gdf.plot(column='count_cat', edgecolor='k', cmap='Blues', linewidth=0.1,
+    bb = gdf.plot(column='count_cat', cmap='Blues', linewidth=0.00, alpha=0.8, ax=ax3,
                   legend=True, legend_kwds=dict(loc='lower left',
                                                 framealpha=1,
-                                                bbox_to_anchor=(0.03, 0.07), facecolor='w',
-                                                edgecolor='k',ncol=1,
-                                                frameon=True, fontsize=titlesize-4),
-             alpha=0.75, ax=ax3, markersize=markersize)
+                                                bbox_to_anchor=(0.03, 0.07),
+                                                edgecolor='w', ncol=1,
+                                                frameon=True, facecolor=(255/255, 255/255, 255/255, 1),
+                                                fontsize=titlesize-5,
+                                                #zorder=2
+                                                ),
+                  markersize=markersize)
     bounds = ['No Studies', '1 Study', '2-4 Studies',
               '5-9 Studies', '10-15 Studies',
               '16-30 Studies', '31-50 Studies',
               'Over 50 Studies']
     legend_labels = ax3.get_legend().get_texts()
+    leg = ax3.get_legend()
+    leg.set_zorder(5000)
     for bound, legend_label in zip(bounds, legend_labels):
         legend_label.set_text(bound)
     ax3.axis('off')
@@ -744,7 +983,7 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
         legend_handle._legmarker.set_markeredgewidth(1)
         legend_handle._legmarker.set_markeredgecolor('k')
 
-    ax1.set_title('A.', fontsize=titlesize+6, y=1.025, **csfont, loc='left')
+    ax1.set_title('A.', fontsize=titlesize+6, y=1.025, **csfont, loc='left', x=-.215)
     ax1.set_title('Continents', fontsize=16,
                   y=1.03, **csfont, loc='center')
     ax2.set_title('B.', fontsize=titlesize+6, y=1.025, **csfont, loc='left')
@@ -752,11 +991,11 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
                   y=1.03, **csfont, loc='center')
     ax4.set_xlabel('Number of contributions')
     ax4.set_title('C.', fontsize=titlesize+6, y=1.025, **csfont, loc='left')
-    ax4.set_title('Institutions (top 10)', fontsize=16,
+    ax4.set_title('Institutions (Top 10)', fontsize=16,
                   y=1.03, **csfont, loc='center')
     ax3.set_title('Countries', **csfont,
-                  fontsize=titlesize+4,y=1)
-    ax3.set_title('D.', **csfont, fontsize=titlesize+6, loc='left', y=1)
+                  fontsize=16, y=1)
+    ax3.set_title('D.', **csfont, fontsize=titlesize+6, loc='left', y=1, x=0.025)
     sns.despine(ax=ax2)
     sns.despine(ax=ax4)
 
@@ -821,6 +1060,7 @@ def make_region(df, gdf, d_path):
                    right_on='aff_country')
     return gdf
 
+
 def make_gdf(df, shapefile):
     gdf = gpd.read_file(shapefile)
     gdf['CNTRY_NAME'] = gdf['CNTRY_NAME'].replace("Gambia, The", "Gambia")
@@ -838,7 +1078,7 @@ def make_gdf(df, shapefile):
 
 
 def make_author_table(auth_df, main_df, d_path, table_filter):
-    auth_df1 = auth_df.drop_duplicates(subset=['doi', 'authorid']).copy()
+    auth_df1 = auth_df#.drop_duplicates(subset=['doi', 'authorid']).copy()
     auth_df1.loc[:, 'authorid'] = auth_df1['authorid']
     auth_papercount = auth_df1.groupby(['authorid'])['authorid'].count().sort_values(ascending=False)
     auth_papercount = auth_papercount.reset_index(name='Papers')
@@ -846,7 +1086,7 @@ def make_author_table(auth_df, main_df, d_path, table_filter):
                            left_on='doi', right_on='DOI')
     auth_wcites = auth_wcites[auth_wcites['authorid'].notnull()]
     auth_wcites.loc[:, 'authorid'] = auth_wcites['authorid'].astype(int).astype(str)
-    auth_wcites.loc[:, 'year'] = auth_wcites.Date.str.extract(r'([0-9][0-9][0-9][0-9])', expand=True)
+    auth_wcites['year'] = auth_wcites.Date.str.extract(r'([0-9][0-9][0-9][0-9])', expand=True)
     auth_wcites_grouped = auth_wcites.groupby(['authorid'])['citedbycount'].sum()
     auth_wcites_grouped = auth_wcites_grouped.reset_index(name='Cites')
     auth_flat = pd.read_csv(os.path.join(d_path, 'scopus',
@@ -934,8 +1174,6 @@ def make_word_vis(main_df, figure_path, d_path):
         wordlist.append(' '.join([en_stemmer.stem(w) for w in elem.split(' ') if w.isalnum() and not w in stop]))
     words_tit_mat = co_occurrence(wordlist, 5)
     matsize = 25
-    csfont = {'fontname': 'Arial'}
-    hfont = {'fontname': 'Arial'}
     abs_sum = words_abs_mat.sum().sum()
     tit_sum = words_tit_mat.sum().sum()
     tot_row_abs = pd.DataFrame(words_abs_mat.sum())
@@ -989,7 +1227,7 @@ def make_word_vis(main_df, figure_path, d_path):
     arrCnts = np.array(df_abs[0:matsize]['count'])+.2
     theta=np.arange(0, 2*np.pi, 2*np.pi / (iN))
     width = (5*np.pi)/iN
-    bottom = 0.4
+    bottom = 0.5
     ax2.set_theta_zero_location('W')
     ax2.plot(theta, len(theta)*[0.55], alpha=0.5, color='k', linewidth=1, linestyle='--')
     bars = ax2.plot(theta, arrCnts, alpha=1, linestyle='-', marker='o',
