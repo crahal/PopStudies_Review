@@ -1,12 +1,14 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import sparse as sp
+import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
+import matplotlib.lines as mlines
 from collections import defaultdict
 import seaborn as sns
-from nltk.corpus import stopwords
-import matplotlib.pyplot as plt
 import geopandas as gpd
-import pandas as pd
 import matplotlib as mpl
 import os
-from itertools import cycle, islice
 import matplotlib.patches as patches
 import matplotlib.ticker as mtick
 import numpy as np
@@ -14,16 +16,11 @@ from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 from matplotlib.colors import LinearSegmentedColormap
 import re
-from matplotlib_venn import venn3, venn3_circles
-import matplotlib.colors as colors
-import pysal.viz.mapclassify as mc
-from matplotlib.colors import rgb2hex
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import SnowballStemmer
 from nltk.probability import FreqDist
 import warnings
-
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 mpl.rc('font', family='Arial')
@@ -31,22 +28,16 @@ csfont = {'fontname': 'Arial'}
 hfont = {'fontname': 'Arial'}
 
 
-import pandas as pd
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy import sparse as sp
-import networkx as nx
-import random
-from networkx.drawing.nx_agraph import graphviz_layout
-from networkx.algorithms.isomorphism.isomorph import (
-    graph_could_be_isomorphic as isomorphic)
-from matplotlib.patches import Patch
-import matplotlib.lines as mlines
-
-
 def make_g_and_summarize(auth_df):
+
+    def summarize_network(G, Gcc):
+        print('Edges in entire network: ' + str(G.number_of_edges()))
+        print('Nodes in entire network: ' + str(G.number_of_nodes()))
+        print('Density of entire network: ' + str(nx.density(G)))
+        print('Edges in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_edges()))
+        print('Nodes in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_nodes()))
+        print('Density of Giant Component: ' + str(nx.density(G.subgraph(Gcc[0]))))
+
     auth_df = auth_df[auth_df['doi'].notnull()]
     author_papers = auth_df[auth_df['authorid'].notnull()]
     authors_df = author_papers[['authorid', 'indexed_name']].drop_duplicates(subset=['authorid'])
@@ -67,18 +58,10 @@ def make_g_and_summarize(auth_df):
     authors_df['degree_cent'] = authors_df['authorid'].apply(lambda l: cent_measure[a_int_id.get(l)])
     authors_df['degree_bet'] = authors_df['authorid'].apply(lambda l: bet_measure.get(a_int_id.get(l)))
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
-    print('Edges in entire network: ' + str(G.number_of_edges()))
-    print('Nodes in entire network: ' + str(G.number_of_nodes()))
-    print('Density of entire network: ' + str(nx.density(G)))
-    print('Edges in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_edges()))
-    print('Nodes in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_nodes()))
-    print('Density of Giant Component: ' + str(nx.density(G.subgraph(Gcc[0]))))
-
     auth_df['prismcoverdate'] = auth_df['prismcoverdate'].astype('datetime64[ns]')
     time_df = pd.DataFrame(index=range(1947, 2021),
                            columns=['whole_edges', 'whole_nodes', 'whole_density',
                                     'giant_edges', 'giant_nodes', 'giant_density'])
-
     for year in range(1, 75):
         year_df = auth_df[auth_df['prismcoverdate'].dt.year<1947+year]
         year_df = year_df[year_df['doi'].notnull()]
@@ -94,13 +77,13 @@ def make_g_and_summarize(auth_df):
         AA = AP.dot(AP.T)
         AA = np.array(AA - np.diag(AA.diagonal()))
         G = nx.from_numpy_matrix(AA, parallel_edges=True)
-
         time_df.loc[year+1946, 'whole_edges'] = G.number_of_edges()
         time_df.loc[year+1946, 'whole_nodes'] = G.number_of_nodes()
         time_df.loc[year+1946, 'whole_density'] = nx.density(G)
         time_df.loc[year+1946, 'giant_edges'] = G.subgraph(Gcc[0]).number_of_edges()
         time_df.loc[year+1946, 'giant_nodes'] = G.subgraph(Gcc[0]).number_of_nodes()
         time_df.loc[year+1946, 'giant_density'] = nx.density(G.subgraph(Gcc[0]))
+    summarize_network(G, Gcc)
     return G, authors_df, author_papers
 
 
@@ -816,7 +799,19 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
     for index, row in temp.iterrows():
         print('There are ' + str(row['Count']) + ' ' +
               str(row['subtypedescription']) + 's.')
+    print('Total number of authorships: ' + str(len(auth_df)))
+    print('Total number of unique authors: ' + str(len(auth_df['authorid'].unique())))
     print('Average number of authors per paper: ' + str(len(auth_df)/len(main_df)))
+
+
+    grouped_auth_count = auth_df.groupby(['doi'])['doi'].count()
+    print(grouped_auth_count.groupby().count())
+    print('Number of solo authored papers: ' + str(len(auth_df)/len(main_df)))
+    print('Most number of authors in one paper: ' + str(len(auth_df)/len(main_df)))
+    print('That paper is : ' + str(len(auth_df)/len(main_df)))
+
+
+
     print('Average number of references per paper: ' + str(len(ref_df)/len(main_df)))
     print('Date of first article: ' + str(main_df['prismcoverdate'].min()))
     print('Date of most recent article: ' + str(main_df['prismcoverdate'].max()))
