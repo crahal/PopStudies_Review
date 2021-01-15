@@ -1,4 +1,4 @@
-<img src="https://github.com/crahal/PopStudies_Review/assets/cover_picture.png" width="900"/>
+<img src="https://github.com/crahal/PopStudies_Review/blob/master/assets/cover_picture.png" width="900"/>
 
 
 # PopStudies Review
