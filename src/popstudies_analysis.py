@@ -28,6 +28,22 @@ csfont = {'fontname': 'Arial'}
 hfont = {'fontname': 'Arial'}
 
 
+def keyword_tabulation(main_df):
+    keyword_series = main_df[main_df['keywords'].notnull()]['keywords']
+    print('We have keywords for ' +\
+          str(len(keyword_series)) + ' papers')
+    keyword_list = pd.DataFrame(index=[], columns=['keyword'])
+    counter = 0
+    for paper in keyword_series:
+        for keyword in paper.lower().split(';'):
+            counter += 1
+            keyword_list.loc[counter, 'keyword'] = keyword.strip()
+    print('We have a total of ' + str(len(keyword_list)) + ' keywords')
+    grouped = keyword_list.groupby(['keyword'])['keyword'].count()
+    print('\nThe top 10 keywords are:')
+    print(grouped.sort_values(ascending=False)[0:10])
+
+
 def continental_analysis(main_df, figure_path):
     topic_cont = pd.DataFrame(index=[],
                               columns=['Simple_Topic', 'Continent'])
