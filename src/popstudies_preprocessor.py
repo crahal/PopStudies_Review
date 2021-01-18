@@ -8,11 +8,17 @@ from gender_detector import gender_detector as gd
 
 def get_gender_guess(x, d):
     """Get gender guess"""
-    return d.get_gender(x)
+    if x.lower() == 'nan':
+        return 'unknown'
+    else:
+        return d.get_gender(x)
 
 
 def get_gender_detect(x, detector):
-    return detector.guess(x)
+    if x.lower() == 'nan':
+        return 'unknown'
+    else:
+        return detector.guess(x)
 
 
 def build_datasets(d_path):
@@ -69,8 +75,6 @@ def build_datasets(d_path):
     auth_df['gender_detector'] = auth_df['forename'].apply(lambda x : get_gender_detect(x, detector))
     auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('mostly_female', 'female')
     auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('mostly_male', 'male')
-
-
     auth_df['gender_guesser'] = auth_df['gender_guesser'].str.replace('andy', 'unknown')
     auth_df['clean_gender'] = np.nan
     for index, row in auth_df.iterrows():
@@ -84,7 +88,9 @@ def build_datasets(d_path):
             auth_df.loc[index, 'clean_gender'] = 'male'
         elif (row['gender_guesser'] == 'unknown') and (row['gender_detector'] == 'male'):
             auth_df.loc[index, 'clean_gender'] = 'male'
-
+#    auth_df['gender_guesser'] = np.where(auth_df['forename']=='nan', 'unknown', auth_df['gender_guesser'])
+#    auth_df['gender_detector'] = np.where(auth_df['forename']=='nan', 'unknown', auth_df['gender_detector'])
+#    auth_df['clean_gender'] = np.where(auth_df['forename']=='nan', 'unknown', auth_df['clean_gender'])
     auth_df['aff_orgs'] = auth_df['aff_orgs'].str.replace('Bangladesh Institute for Development Studies', 'Bangladesh Institute of Development Studies')
     auth_df['aff_orgs'] = auth_df['aff_orgs'].str.replace('Biomedical Res./Training Institute', 'Biomedical Research and Training Institute')
     auth_df['aff_orgs'] = auth_df['aff_orgs'].str.replace('California Institute for Technology', 'California Institute of Technology')
@@ -255,6 +261,20 @@ def build_datasets(d_path):
     main_df['Topic'] = main_df['Topic'].str.strip()
     main_df['Topic'] = main_df['Topic'].astype(str)
     main_df['abstract'] = main_df['abstract'].astype(str)
+
+
+    def continent_merger(main_df, d_path):
+        continent_merger = pd.read_csv(os.path.join(d_path,
+                                                    'support',
+                                                    'continent_merger.csv'))
+        main_df = pd.merge(main_df, continent_merger,
+                           how='left', left_on=['Regions', 'Nation'],
+                           right_on=['Regions', 'Nation'])
+        main_df['Continent'] = main_df['Continent'].str.replace('asia', 'Asia')
+        return main_df
+
+    main_df = continent_merger(main_df, d_path)
+
     return main_df, ref_df, auth_df
 
 

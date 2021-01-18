@@ -28,15 +28,225 @@ csfont = {'fontname': 'Arial'}
 hfont = {'fontname': 'Arial'}
 
 
-def make_g_and_summarize(auth_df):
+def continental_analysis(main_df, figure_path):
+    topic_cont = pd.DataFrame(index=[],
+                              columns=['Simple_Topic', 'Continent'])
+    counter = 0
+    for index, row in main_df.iterrows():
+        for topic in row['Topic'].split(';'):
+            topic_cont.loc[counter, 'Simple_Topic'] = topic
+            topic_cont.loc[counter, 'Continent'] = row['Continent']
+            counter += 1
+    topic_cont['Simple_Topic'] = topic_cont['Simple_Topic'].str.extract('(\d+)', expand=False)
+    topic_cont['Simple_Topic'] = 'Topic ' + topic_cont['Simple_Topic']
+    topic_cont = topic_cont[(topic_cont['Simple_Topic'].notnull()) & (topic_cont['Continent'].notnull())]
+    topic_count = pd.DataFrame(index=topic_cont['Simple_Topic'].sort_values().unique(),
+                               columns=topic_cont['Continent'].unique())
+    for column in topic_count.columns:
+        for index in topic_count.index:
+            topic_count.loc[index, column] = len(topic_cont[(topic_cont['Simple_Topic']==index) &
+                                                            (topic_cont['Continent']==column)])
+        topic_count[column] = topic_count[column]/topic_count[column].sum()
+    topic_count = topic_count.round(1)
+    topic_count.to_csv(os.path.join(figure_path, '..', 'tables', 'continental_analysis.csv'))
+    print(topic_count.to_string())
 
-    def summarize_network(G, Gcc):
-        print('Edges in entire network: ' + str(G.number_of_edges()))
-        print('Nodes in entire network: ' + str(G.number_of_nodes()))
-        print('Density of entire network: ' + str(nx.density(G)))
-        print('Edges in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_edges()))
-        print('Nodes in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_nodes()))
-        print('Density of Giant Component: ' + str(nx.density(G.subgraph(Gcc[0]))))
+
+def describe_lengths(main_df):
+    main_df['pages'] = main_df['pageend'] - main_df['pagestart']
+    colors1 = [ '#1f78b4', '#fcdb81', '#d73027', '#0B6623']
+    fig, ax = plt.subplots(figsize=(14, 5))
+    main_df['prismcoverdate'] = pd.to_datetime(main_df['prismcoverdate'])
+    main_df = main_df.sort_values(by='prismcoverdate', ascending=True)
+    main_df[['prismcoverdate', 'pages']].plot(x='prismcoverdate', y='pages',
+                                              kind='scatter', color='w',
+                                              edgecolor='k', linewidth=.75, ax=ax)
+    glass_mean = main_df[:845]['pages'].mean()
+    glass_max = main_df[:845]['pages'].max()
+    glass_std = main_df[:845]['pages'].std()
+    grebenik_mean = main_df[845:1344]['pages'].mean()
+    grebenik_max = main_df[845:1344]['pages'].max()
+    grebenik_std = main_df[845:1344]['pages'].std()
+    simmons_mean = main_df[1344:1794]['pages'].mean()
+    simmons_max = main_df[1344:1794]['pages'].max()
+    simmons_std = main_df[1344:1794]['pages'].std()
+    ermisch_mean = main_df[1794:]['pages'].mean()
+    ermisch_max = main_df[1794:]['pages'].max()
+    ermisch_std = main_df[1794:]['pages'].std()
+    all_mean = main_df['pages'].mean()
+    all_max = main_df['pages'].max()
+    all_std = main_df['pages'].std()
+
+    ax.hlines(glass_mean + 2*glass_std, '1947-01-01', '1979-03-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[0])
+    ax.hlines(glass_mean - 2*glass_std, '1947-01-01', '1979-03-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[0])
+    ax.fill_between(main_df['prismcoverdate'][0:845],
+                    glass_mean - 2*glass_std, glass_mean + 2*glass_std,
+                    alpha=0.065, color=colors1[0])
+    ax.hlines(grebenik_mean + 2*grebenik_std, '1979-03-01', '1997-03-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[1])
+    ax.hlines(grebenik_mean - 2*grebenik_std, '1979-03-01', '1997-03-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[1])
+    ax.fill_between(main_df['prismcoverdate'][845:1344],
+                    grebenik_mean - 2*grebenik_std, grebenik_mean + 2*grebenik_std,
+                    alpha=0.065, color=colors1[1])
+    ax.hlines(simmons_mean + 2*simmons_std, '1997-03-01', '2017-01-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[2])
+    ax.hlines(simmons_mean - 2*simmons_std, '1997-03-01', '2017-01-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[2])
+    ax.fill_between(main_df['prismcoverdate'][1344:1790],
+                     simmons_mean - 2*simmons_std, simmons_mean + 2*simmons_std,
+                     alpha=0.065, color=colors1[2])
+    ax.hlines(ermisch_mean + 2*ermisch_std, '2017-01-01', '2020-09-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[3])
+    ax.hlines(ermisch_mean - 2*ermisch_std, '2017-01-01', '2020-09-01',
+              linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[3])
+    ax.fill_between(main_df['prismcoverdate'][1790:],
+                    ermisch_mean - 2*ermisch_std, ermisch_mean + 2*ermisch_std,
+                    alpha=0.065, color=colors1[3])
+    ax.set_xlabel('')
+    ax.set_ylabel('Page Length (pages)', fontsize=12, **csfont)
+    ax.set_ylim(-5, 75)
+    ax.set_xlim('1946-01-01', '2022-01-01')
+
+    xmin, xmax = (-8250, 3250)
+    xspan = xmax - xmin
+    ax_xmin, ax_xmax = ax.get_xlim()
+    xax_span = ax_xmax - ax_xmin
+    ymin, ymax = ax.get_ylim()
+    yspan = ymax - ymin
+    resolution = int(xspan/xax_span*100)*2+1 # guaranteed uneven
+    beta = 300./xax_span # the higher this is, the smaller the radius
+    x = np.linspace(xmin, xmax, resolution)
+    x_half = x[:resolution//2+1]
+    y_half_brace = (1/(1.+np.exp(-beta*(x_half-x_half[0])))
+                    + 1/(1.+np.exp(-beta*(x_half-x_half[-1]))))
+    y = np.concatenate((y_half_brace, y_half_brace[-2::-1]))
+    y = ymin + (.05*y - .01)*yspan+72.5# adjust vertical position
+    ax.plot(x, y, color='black', lw=1)
+    ax.text((xmax+xmin)/2., ymin+.07*yspan+72.5, 'Glass and Grebenik', ha='center', va='bottom', **csfont, fontsize=13)
+
+    xmin, xmax = (3450, 9800)
+    xspan = xmax - xmin
+    ax_xmin, ax_xmax = ax.get_xlim()
+    xax_span = ax_xmax - ax_xmin
+    ymin, ymax = ax.get_ylim()
+    yspan = ymax - ymin
+    resolution = int(xspan/xax_span*100)*2+1 # guaranteed uneven
+    beta = 300./xax_span # the higher this is, the smaller the radius
+    x = np.linspace(xmin, xmax, resolution)
+    x_half = x[:resolution//2+1]
+    y_half_brace = (1/(1.+np.exp(-beta*(x_half-x_half[0])))
+                    + 1/(1.+np.exp(-beta*(x_half-x_half[-1]))))
+    y = np.concatenate((y_half_brace, y_half_brace[-2::-1]))
+    y = ymin + (.05*y - .01)*yspan+72.50# adjust vertical position
+    ax.plot(x, y, color='black', lw=1)
+    ax.text((xmax+xmin)/2., ymin+.07*yspan+72.5, 'Grebenik', ha='center', va='bottom', **csfont, fontsize=13)
+
+    xmin, xmax = (10000, 17150)
+    xspan = xmax - xmin
+    ax_xmin, ax_xmax = ax.get_xlim()
+    xax_span = ax_xmax - ax_xmin
+    ymin, ymax = ax.get_ylim()
+    yspan = ymax - ymin
+    resolution = int(xspan/xax_span*100)*2+1 # guaranteed uneven
+    beta = 300./xax_span # the higher this is, the smaller the radius
+    x = np.linspace(xmin, xmax, resolution)
+    x_half = x[:resolution//2+1]
+    y_half_brace = (1/(1.+np.exp(-beta*(x_half-x_half   [0])))
+                    + 1/(1.+np.exp(-beta*(x_half-x_half[-1]))))
+    y = np.concatenate((y_half_brace, y_half_brace[-2::-1]))
+    y = ymin + (.05*y - .01)*yspan+72.5# adjust vertical position
+    ax.plot(x, y, color='black', lw=1)
+    ax.text((xmax+xmin)/2., ymin+.07*yspan+72.5, 'Simmons', ha='center', va='bottom', **csfont, fontsize=13)
+
+    xmin, xmax = (17350, 18700)
+    xspan = xmax - xmin
+    ax_xmin, ax_xmax = ax.get_xlim()
+    xax_span = ax_xmax - ax_xmin
+    ymin, ymax = ax.get_ylim()
+    yspan = ymax - ymin
+    resolution = int(xspan/xax_span*100)*2+1 # guaranteed uneven
+    beta = 300./xax_span # the higher this is, the smaller the radius
+    x = np.linspace(xmin, xmax, resolution)
+    x_half = x[:resolution//2+1]
+    y_half_brace = (1/(1.+np.exp(-beta*(x_half-x_half[0])))
+                    + 1/(1.+np.exp(-beta*(x_half-x_half[-1]))))
+    y = np.concatenate((y_half_brace, y_half_brace[-2::-1]))
+    y = ymin + (.05*y - .01)*yspan+72.5# adjust vertical position
+    ax.plot(x, y, color='black', lw=1)
+    ax.text((xmax+xmin)/2., ymin+.07*yspan+72.5, 'Ermisch', ha='center', va='bottom', **csfont, fontsize=13);
+    fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
+    sns.despine()
+    plt.savefig(os.path.join(fig_path, 'pagelength_over_time.pdf'),
+                bbox_inches='tight')
+    plt.savefig(os.path.join(fig_path, 'pagelength_over_time.png'), dpi=400,
+                bbox_inches='tight')
+    plt.savefig(os.path.join(fig_path, 'pagelength_over_time.svg'),
+                bbox_inches='tight')
+
+    print('All-time: mean length was ' +\
+          str(round(all_mean,2)) +\
+          ', stdev was ' + str(round(all_std,2)) +\
+          ', max length of ' + str(round(all_max,2)))
+    print('Glass and Grebenik: mean length was ' +\
+          str(round(glass_mean,2)) +\
+          ', stdev was ' + str(round(glass_std,2)) +\
+          ', max length of ' + str(round(glass_max,2)))
+    print('Grebenik: mean length was ' + str(round(grebenik_mean,2)) +\
+          ', stdev was ' + str(round(grebenik_std,2)) +\
+          ', max length of ' + str(round(grebenik_max,2)))
+    print('Simmons: mean length was ' + str(round(simmons_mean,2)) +\
+          ', stdev was ' + str(round(simmons_std,2)) +\
+          ', max length of ' + str(round(simmons_max,2)))
+    print('Ermisch: mean length was ' + str(round(ermisch_mean,2)) +\
+          ', stdev was ' + str(round(ermisch_std,2)) +\
+          ', max length of ' + str(round(ermisch_max, 2)))
+
+
+def network_summary(G, Gcc):
+    print('Edges in entire network: ' + str(G.number_of_edges()))
+    print('Nodes in entire network: ' + str(G.number_of_nodes()))
+    print('Density of entire network: ' + str(nx.density(G)))
+    print('Edges in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_edges()))
+    print('Nodes in Giant Component: ' + str(G.subgraph(Gcc[0]).number_of_nodes()))
+    print('Density of Giant Component: ' + str(nx.density(G.subgraph(Gcc[0]))))
+
+def authorship_country(auth_df, d_path):
+    cou_cou = auth_df.groupby(['aff_country'])['aff_country'].count()
+    cou_cou = cou_cou.sort_values(ascending=False).reset_index(name='count')
+    print('Number of unique countries from which authors write from: ' +\
+          str(len(cou_cou)))
+    holder_string = '\nThese are: '
+    for index, row in cou_cou.iterrows():
+        holder_string = holder_string + row['aff_country'] + ' (' + str(row['count']) + (')') + ', '
+    print(holder_string[:-2])
+    cou_cou[['aff_country']].to_csv(os.path.join(d_path, 'support', 'unique_countries.csv'))
+
+
+def authorship_per_paper(auth_df):
+    for years in ['194', '195', '196', '197', '198', '199', '200', '201']:
+        count_year = auth_df[auth_df['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
+        print('Average number of authors per paper in the ' + years + '0s: ' + str(round(count_year.mean(), 3)))
+    grouped_auth_count = auth_df.groupby(['doi'])['doi'].count()
+    grouped_auth_count = grouped_auth_count.reset_index(name='count')
+    max_df = grouped_auth_count[grouped_auth_count['count']==grouped_auth_count['count'].max()]
+    max_doi =  max_df.loc[max_df.index[0], 'doi']
+    print('The most number of authors on one paper: ' +
+          str(grouped_auth_count['count'].max()) +
+          ' (DOI: ' + str(max_doi) + ')')
+    print('The number of solo authored papers: ' + str(round(grouped_auth_count.groupby(['count'])['count'].count()[1], 3)))
+    print('The number of papers with 2 authors is : ' + str(round(grouped_auth_count.groupby(['count'])['count'].count()[2], 3)))
+    print('The number of papers with 3 authors is : ' + str(round(grouped_auth_count.groupby(['count'])['count'].count()[3], 3)))
+    print('The number of papers with more than 3 authors is : ' + str(round(grouped_auth_count.groupby(['count'])['count'].count()[3:].sum(), 3)))
+    for years in ['194', '195', '196', '197', '198', '199', '200', '201']:
+        count_year = auth_df[auth_df['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
+        num_solo = count_year.reset_index(name='count').groupby(['count'])['count'].count()[1]
+        print('Percent of solo authored papers in the ' + years + '0s: ' + str(round(num_solo/len(count_year), 3)))
+
+
+def make_network(auth_df):
 
     auth_df = auth_df[auth_df['doi'].notnull()]
     author_papers = auth_df[auth_df['authorid'].notnull()]
@@ -83,8 +293,7 @@ def make_g_and_summarize(auth_df):
         time_df.loc[year+1946, 'giant_edges'] = G.subgraph(Gcc[0]).number_of_edges()
         time_df.loc[year+1946, 'giant_nodes'] = G.subgraph(Gcc[0]).number_of_nodes()
         time_df.loc[year+1946, 'giant_density'] = nx.density(G.subgraph(Gcc[0]))
-    summarize_network(G, Gcc)
-    return G, authors_df, author_papers
+    return G, Gcc, authors_df, author_papers
 
 
 def plot_G0_and_G1(G, authors_df, author_papers, fig_path):
@@ -780,9 +989,14 @@ def gender_over_time(auth_df):
                 bbox_inches='tight', dpi=600)
     plt.savefig(os.path.join(fig_path, 'gender_over_time.svg'),
                 bbox_inches='tight')
+    pc_fem = len(auth_df[auth_df['clean_gender'] == 'female'])
+    tot_gender = len(auth_df[(auth_df['clean_gender'] == 'female') |
+                             (auth_df['clean_gender'] == 'male')])
+    print('Percent of female authorships (full sample): ' + \
+          str(round(pc_fem / tot_gender * 100, 2)) + '%')
 
 
-def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
+def summarize_scrape_and_curate(main_df, auth_df, ref_df, G, Gcc, d_path):
     missing_df = main_df[(main_df['Topic'].isnull()) &
                          (main_df['abstract'] != 'nan. ')]
     if len(missing_df) > 0:
@@ -792,27 +1006,25 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
                 'Population', 'Dataset', 'Time']
         missing_df[cols].to_csv(os.path.join(d_path, 'manual_review', 'unmatched',
                                 'unmatched_abstracts.csv'))
-    print('Total number of papers in our database: ' + str(len(main_df)))
+    print('Total number of papers in our main database: ' + str(len(main_df)))
+    print('Total number of papers in our author database: ' + str(len(auth_df['doi'].unique())))
     print('Papers with no abstract: ' + str(len(main_df[main_df['abstract']=='nan. '])))
     temp = main_df.groupby(['subtypedescription'])['subtypedescription'].count()
     temp = temp.reset_index(name='Count')
     for index, row in temp.iterrows():
-        print('There are ' + str(row['Count']) + ' ' +
+        print('In our main dataframe there are ' + str(row['Count']) + ' ' +
               str(row['subtypedescription']) + 's.')
     print('Total number of authorships: ' + str(len(auth_df)))
     print('Total number of unique authors: ' + str(len(auth_df['authorid'].unique())))
-    print('Average number of authors per paper: ' + str(len(auth_df)/len(main_df)))
-
-
-    grouped_auth_count = auth_df.groupby(['doi'])['doi'].count()
-    print(grouped_auth_count.groupby().count())
-    print('Number of solo authored papers: ' + str(len(auth_df)/len(main_df)))
-    print('Most number of authors in one paper: ' + str(len(auth_df)/len(main_df)))
-    print('That paper is : ' + str(len(auth_df)/len(main_df)))
-
-
-
     print('Average number of references per paper: ' + str(len(ref_df)/len(main_df)))
+    print('Average number of authors per paper: ' + str(round(len(auth_df)/len(auth_df['doi'].unique()), 3)))
+    grouped_ref_count = ref_df.groupby(['doi'])['doi'].count()
+    grouped_ref_count = grouped_ref_count.reset_index(name='count')
+    max_df = grouped_ref_count[grouped_ref_count['count']==grouped_ref_count['count'].max()]
+    max_doi =  max_df.loc[max_df.index[0], 'doi']
+    print('The most number of refrences in one paper: ' +
+          str(grouped_ref_count['count'].max()) +
+          ' (DOI: ' + str(max_doi) + ')')
     print('Date of first article: ' + str(main_df['prismcoverdate'].min()))
     print('Date of most recent article: ' + str(main_df['prismcoverdate'].max()))
     pages_df = main_df[(main_df['pagestart'].notnull()) &
@@ -820,6 +1032,42 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, d_path):
     pages_df.loc[:, 'paper_length'] = pages_df['pageend']-pages_df['pagestart']+1
     print('Average paper length (pages): ' +str(pages_df['paper_length'].sum()/len(pages_df)))
     print('Number of OpenAccess articles: ' + str(main_df['openaccess'].sum()))
+    print('The average number of citations is: ' + str(main_df['citedbycount'].mean()))
+    max_df = main_df[main_df['citedbycount']==main_df['citedbycount'].max()]
+    max_doi = max_df.loc[max_df.index[0], 'DOI']
+    print('The maximum number of citations is: ' + str(main_df['citedbycount'].max()) +\
+          '(' + str(max_doi) + ')')
+    print('Number of papers with no citations: ' + str(len(main_df[main_df['citedbycount']==0])))
+
+    collab_df = auth_df[(auth_df['doi'].duplicated(keep=False)) &
+                        (auth_df['aff_id'].notnull()) &
+                        (auth_df['prismcoverdate'].str.startswith('198'))]
+    collab_df_diff = collab_df[['doi', 'aff_id']].drop_duplicates(keep=False)
+    print('Percent of inter-affiliation collaborations in 1980s: ' + str(round(len(collab_df_diff)/len(collab_df),2)))
+
+    collab_df = auth_df[(auth_df['doi'].duplicated(keep=False)) &
+                        (auth_df['aff_id'].notnull()) &
+                        (auth_df['prismcoverdate'].str.startswith('199'))]
+    collab_df_diff = collab_df[['doi', 'aff_id']].drop_duplicates(keep=False)
+    print('Percent of inter-affiliation collaborations in 1990s: ' + str(round(len(collab_df_diff)/len(collab_df),2)))
+
+    collab_df = auth_df[(auth_df['doi'].duplicated(keep=False)) &
+                        (auth_df['aff_id'].notnull()) &
+                        (auth_df['prismcoverdate'].str.startswith('200'))]
+    collab_df_diff = collab_df[['doi', 'aff_id']].drop_duplicates(keep=False)
+    print('Percent of inter-affiliation collaborations in 2000s: ' + str(round(len(collab_df_diff)/len(collab_df),2)))
+
+    collab_df = auth_df[(auth_df['doi'].duplicated(keep=False)) &
+                        (auth_df['aff_id'].notnull()) &
+                        (auth_df['prismcoverdate'].str.startswith('201'))]
+    collab_df_diff = collab_df[['doi', 'aff_id']].drop_duplicates(keep=False)
+    print('Percent of inter-affiliation collaborations in 2010s: ' + str(round(len(collab_df_diff)/len(collab_df),2)))
+
+    collab_df = auth_df[(auth_df['doi'].duplicated(keep=False)) &
+                        (auth_df['aff_id'].notnull())]
+    collab_df_diff = collab_df[['doi', 'aff_id']].drop_duplicates(keep=False)
+    print('Percent of inter-affiliation collaborations over all time: ' +\
+          str(round(len(collab_df_diff)/len(collab_df),2)))
 
 
 def make_affil_plot(main_df, auth_df, d_path, figure_path):
@@ -954,7 +1202,7 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     gdf['count_cat'] = np.where(gdf['count']>50,'7', gdf['count_cat'])
     gdf.plot(ax=ax3, color='white', edgecolor='black', linewidth=0.35);
     gdf.plot(ax=ax3, color='None', edgecolor='black', alpha=0.2);
-    bb = gdf.plot(column='count_cat', cmap='Blues', linewidth=0.00, alpha=0.8, ax=ax3,
+    bb = gdf.plot(column='count_cat', cmap='Blues', linewidth=0.00, alpha=0.8, ax=ax3, facecolor='k',
                   legend=True, legend_kwds=dict(loc='lower left',
                                                 framealpha=1,
                                                 bbox_to_anchor=(0.03, 0.07),
@@ -977,7 +1225,6 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     for legend_handle in ax3.get_legend().legendHandles:
         legend_handle._legmarker.set_markeredgewidth(1)
         legend_handle._legmarker.set_markeredgecolor('k')
-
     ax1.set_title('A.', fontsize=titlesize+6, y=1.025, **csfont, loc='left', x=-.215)
     ax1.set_title('Continents', fontsize=16,
                   y=1.03, **csfont, loc='center')
