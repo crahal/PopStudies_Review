@@ -38,7 +38,3 @@ Research assistance for the manual data curation was provided by Sofia Gieystor 
 * Docstrings, docstrings, docstrings
 
 Last updated: 2020-02-20
-<<<<<<< HEAD
-
-=======
->>>>>>> 66c4cf0c9825925baf3858ae551e31789b1d7425
