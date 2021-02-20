@@ -6,6 +6,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.lines as mlines
 from collections import defaultdict
 import seaborn as sns
+import matplotlib.dates as mdates
 import geopandas as gpd
 import matplotlib as mpl
 import os
@@ -21,11 +22,38 @@ from nltk.stem.snowball import SnowballStemmer
 from nltk.probability import FreqDist
 import warnings
 from matplotlib import colors
+from matplotlib import rcParams
+rcParams['font.family'] = 'Arial'
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 mpl.rc('font', family='Arial')
 csfont = {'fontname': 'Arial'}
 hfont = {'fontname': 'Arial'}
+
+
+def title_analysis(main_df):
+    main_df['title_length'] = main_df['Title'].str.len()
+    main_df = main_df.sort_values(by='prismcoverdate', ascending=True)
+    tit_mean = main_df['title_length'].mean()
+    print('Mean length of titles: ' + str(tit_mean) + ' characters')
+    tit_max = main_df['title_length'].max()
+    print('Max length of titles: ' + str(tit_max) + ' characters')
+    tit_min = main_df['title_length'].min()
+    print('Min length of titles: ' + str(tit_min) + ' characters')
+    print('The shortest title is: ' +
+          main_df.sort_values(by='title_length',
+                              ascending=True).reset_index().at[0,
+                                                               'Title'])
+    print('The longest title is: ' +
+          main_df.sort_values(by='title_length',
+                              ascending=False).reset_index().at[0,
+                                                                'Title'])
+    tit_mean_firsthalf = main_df[0:int(len(main_df)/2)]['title_length'].mean()
+    print('Mean length of titles, first half of period: ' +\
+          str(tit_mean_firsthalf) + ' characters')
+    tit_mean_secondhalf = main_df[int(len(main_df)/2):]['title_length'].mean()
+    print('Mean length of titles, second half of period: ' +\
+          str(tit_mean_secondhalf) + ' characters')
 
 
 def plot_all_G(G, authors_df, author_papers, fig_path):
@@ -155,32 +183,46 @@ def plot_all_G(G, authors_df, author_papers, fig_path):
                 bbox_inches='tight')
 
 
-def visualise_mallet(mallet_df):
-    mallet_df["word_sum"] = mallet_df.sum(axis=1)
-    mallet_df = mallet_df.sort_values(by='word_sum', ascending=False)[0:50]
-    mallet_df = mallet_df.sort_values(by='word_sum', ascending=True)
-    mallet_df.loc['topic_sum'] = mallet_df.sum(axis=0)
-    mallet_df = mallet_df.T
-    mallet_df = mallet_df.sort_values(by='topic_sum', ascending=False)
-    heatmap_df = mallet_df.drop(['topic_sum'], axis=1).drop(['word_sum'], axis=0)
-    heatmap_df = heatmap_df.T
+def value_to_color(val):
+    val_position = float((val - color_min)) / (color_max - color_min)
+    ind = int(val_position * (n_colors - 1))
+    return palette[ind]
 
-    fig = plt.figure(figsize=(14, 8))
-    ax2 = plt.subplot2grid((32, 32), (0, 0), rowspan=3, colspan=29)
-    ax3 = plt.subplot2grid((32, 32), (3, 29), rowspan=29, colspan=2)
-    ax1 = plt.subplot2grid((32, 32), (3, 0), rowspan=29, colspan=29, sharex=ax2, sharey=ax3)
-    ax2 = plt.subplot2grid((32, 32), (0, 0), rowspan=3, colspan=29)
-    ax3 = plt.subplot2grid((32, 32), (3, 29), rowspan=29, colspan=2)
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    new_cmap = colors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        cmap(np.linspace(minval, maxval, n)))
+    return new_cmap
 
+
+def visualise_mallet(mallet_topics):
+    fig = plt.figure(figsize=(14, 12), tight_layout=True)
+    ax1 = plt.subplot2grid((5, 4), (0, 0), rowspan=5, colspan=2)
+    ax2 = plt.subplot2grid((5, 4), (0, 2), rowspan=1, colspan=1)
+    ax3 = plt.subplot2grid((5, 4), (0, 3), rowspan=1, colspan=1)
+    ax4 = plt.subplot2grid((5, 4), (1, 2), rowspan=1, colspan=1)
+    ax5 = plt.subplot2grid((5, 4), (1, 3), rowspan=1, colspan=1)
+    ax6 = plt.subplot2grid((5, 4), (2, 2), rowspan=1, colspan=1)
+    ax7 = plt.subplot2grid((5, 4), (2, 3), rowspan=1, colspan=1)
+    ax8 = plt.subplot2grid((5, 4), (3, 2), rowspan=1, colspan=1)
+    ax9 = plt.subplot2grid((5, 4), (3, 3), rowspan=1, colspan=1)
+    ax10 = plt.subplot2grid((5, 4), (4, 2), rowspan=1, colspan=1)
+    ax11 = plt.subplot2grid((5, 4), (4, 3), rowspan=1, colspan=1)
+
+    mallet_df = mallet_topics
+    word_list = []
+    for col in mallet_df.columns:
+        temp_df = mallet_df.sort_values(by=col, ascending=False)
+        for index in temp_df.index[0:4]:
+            if index not in word_list:
+                word_list.append(index)
+    heatmap_df = mallet_df.T[word_list]
+    heatmap_df['topic_sum'] = heatmap_df.sum(axis=1)
+    heatmap_df = heatmap_df.sort_values(by='topic_sum',ascending=False)
+    heatmap_df = heatmap_df.drop('topic_sum', axis=1)#.T
     n_colors = 256
     palette = sns.diverging_palette(220, 20, n=n_colors)
     color_min, color_max = [-heatmap_df.max().max(), heatmap_df.max().max()]
-
-    def value_to_color(val):
-        val_position = float((val - color_min)) / (color_max - color_min)
-        ind = int(val_position * (n_colors - 1))
-        return palette[ind]
-
     corr = pd.melt(heatmap_df.reset_index(), id_vars='index')
     corr.columns = ['x', 'y', 'value']
     x = corr['x']
@@ -190,80 +232,80 @@ def visualise_mallet(mallet_df):
     y_labels = [v for v in y.unique()[::-1]]
     x_to_num = {p[1]: p[0] for p in enumerate(x_labels)}
     y_to_num = {p[1]: p[0] for p in enumerate(y_labels)}
-    size_scale = 1500
-
-    def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
-        new_cmap = colors.LinearSegmentedColormap.from_list(
-            'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
-            cmap(np.linspace(minval, maxval, n)))
-        return new_cmap
-
-    cmap = plt.get_cmap('Reds')
-    new_cmap = truncate_colormap(cmap, 0.1, 1)
-
+    size_scale = 2500
+    cmap = plt.get_cmap('Oranges')
+    new_cmap = truncate_colormap(cmap, 0.05, 0.85)
     ax1.scatter(x=x.map(x_to_num), y=y.map(y_to_num), s=((size ** 0.6) * size_scale),
                 c=corr['value'], cmap=new_cmap, marker='o',
-                edgecolor='k', linewidth=0.5)
-
+                edgecolor='k', linewidth=0.35)
     ax1.set_xticks([x_to_num[v] for v in x_labels])
     ax1.set_xticklabels(x_labels, rotation=0)
     ax1.set_yticks([y_to_num[v] for v in y_labels])
     ax1.set_yticklabels(y_labels)
     ax1.grid(False, 'minor', alpha=0, zorder=100)
-
-    blue_list = []
-    for alpha in range(1, 51):
-        blue_list.append((55 / 255, 126 / 255, 184 / 255, 0.1 + (0.8 / alpha)))
-    word_bars = mallet_df.loc['word_sum'].sort_values(ascending=True)[:-1]
-    topic_bars = mallet_df['topic_sum'].sort_values(ascending=True)[:-1]
-    word_bars.plot(kind='bar', ax=ax2, edgecolor='k', color=blue_list[::-1], width=0.75, linewidth=0.5)
-    blue_list = []
-    for alpha in range(1, 26):
-        blue_list.append((55 / 255, 126 / 255, 184 / 255, 0.1 + (0.8 / alpha)))
-    topic_bars.plot(kind='barh', ax=ax3, edgecolor='k', color=blue_list[::-1], width=0.75, linewidth=0.5)
-
     ax1.xaxis.grid(linestyle='--', alpha=0.15)
     ax1.yaxis.grid(linestyle='--', alpha=0.15)
-
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=90)
-
-    ax2.set_xlim(-1, 50)
-    ax3.set_ylim(-1, 25)
-    ax1.set_xlim(-1, 50)
-    ax1.set_ylim(-1, 25)
-
-    ax3.axes.get_xaxis().set_ticks([])
-    ax3.axes.get_yaxis().set_ticks([])
-    ax2.axes.get_xaxis().set_ticks([])
-    ax2.axes.get_yaxis().set_ticks([])
     sns.despine(ax=ax1, left=False, right=True, bottom=False, top=True)
-    sns.despine(ax=ax2, left=True, right=True, bottom=False, top=True)
-    sns.despine(ax=ax3, left=False, right=True, bottom=True, top=True)
-
     for label in ax1.get_yticklabels():
         label.set_fontproperties('Arial')
     for label in ax1.get_xticklabels():
         label.set_fontproperties('Arial')
+    ax1.set_title('A.', fontsize=24, loc='left', y=1.01, x=-0.03, **csfont)
+    ax2.set_title('B.', fontsize=24, loc='left', y=1.03, x=-0.25, **csfont)
 
-    ax1.set_title('A.', fontsize=24, loc='left', y=1.03, x=-0.03, **csfont)
+    x1 = 0.6805
+    x2 = 0.9305
+    y1 = 0.8075
+    y2 = 0.62
+    y3 = 0.4375
+    y4 = 0.252
+    y5 = 0.0675
+    ax2.annotate(heatmap_df.index[0],
+                 xy=(x1, y1), xycoords='figure fraction',
+                 fontsize=11)
+    ax3.annotate(heatmap_df.index[1],
+                 xy=(x2, y1), xycoords='figure fraction',
+                 fontsize=11)
+    ax4.annotate(heatmap_df.index[2],
+                 xy=(x1, y2), xycoords='figure fraction',
+                 fontsize=11)
+    ax5.annotate(heatmap_df.index[3],
+                 xy=(x2, y2), xycoords='figure fraction',
+                 fontsize=11)
+    ax6.annotate(heatmap_df.index[4],
+                 xy=(x1, y3), xycoords='figure fraction',
+                 fontsize=11)
+    ax7.annotate(heatmap_df.index[5],
+                 xy=(x2, y3), xycoords='figure fraction',
+                 fontsize=11)
+    ax8.annotate(heatmap_df.index[6],
+                 xy=(x1, y4), xycoords='figure fraction',
+                 fontsize=11)
+    ax9.annotate(heatmap_df.index[7],
+                 xy=(x2, y4), xycoords='figure fraction',
+                 fontsize=11)
+    ax10.annotate(heatmap_df.index[8],
+                  xy=(x1, y5), xycoords='figure fraction',
+                  fontsize=11)
+    ax11.annotate(heatmap_df.index[9],
+                  xy=(x2, y5), xycoords='figure fraction',
+                  fontsize=12)
+
+    for ax, topic in zip([ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11], range(0,11)):
+        topics = mallet_topics[heatmap_df.index[topic]]
+        topics = topics.sort_values(ascending=False)[0:5]
+        topics = topics.sort_values(ascending=True)
+        topics.plot(kind='barh', ax=ax, edgecolor='k', alpha=0.8, color='#6baed6', width=.75)
+        sns.despine(ax=ax)
+
+    ax10.set_xlabel('Weight')
+    ax11.set_xlabel('Weight')
+    plt.tight_layout(True)
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
-    plt.savefig(os.path.join(fig_path, 'mallet_output.pdf'),
-                bbox_inches='tight')
-    plt.savefig(os.path.join(fig_path, 'mallet_output.svg'),
-                bbox_inches='tight')
-    plt.savefig(os.path.join(fig_path, 'mallet_output.png'), dpi=800,
-                bbox_inches='tight')
-
-
-def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
-    new_cmap = colors.LinearSegmentedColormap.from_list(
-        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
-        cmap(np.linspace(minval, maxval, n)))
-    return new_cmap
-
-
-cmap = plt.get_cmap('Reds')
-new_cmap = truncate_colormap(cmap, 0.1, 1)
+    plt.savefig(os.path.join(fig_path, 'mallet_output.pdf'), transparent=False)
+    plt.savefig(os.path.join(fig_path, 'mallet_output.png'), transparent=False)
+    plt.savefig(os.path.join(fig_path, 'mallet_output.svg'), transparent=False, format='svg')
 
 
 def describe_norms(main_df, auth_df):
@@ -404,21 +446,21 @@ def describe_norms(main_df, auth_df):
 
     ax.vlines(18800, -5, 68.4, linewidth=1.2, linestyle='--', color='#d3d3d3')
 
-    glass_auth = auth_df[auth_df['prismcoverdate'] < '1979-03-01']
-    grebenik_auth = auth_df[(auth_df['prismcoverdate'] >= '1979-03-01') |
-                            (auth_df['prismcoverdate'] < '1997-03-01')]
-    simons_auth = auth_df[auth_df['prismcoverdate'] >= '1997-03-01']
+    temp_auth = auth_df.drop_duplicates(subset=['doi', 'authorid'])
+    glass_auth = temp_auth[auth_df['prismcoverdate'] < '1979-03-01']
+    grebenik_auth = temp_auth[(temp_auth['prismcoverdate'] >= '1979-03-01') |
+                            (temp_auth['prismcoverdate'] < '1997-03-01')]
+    simons_auth = temp_auth[temp_auth['prismcoverdate'] >= '1997-03-01']
     glass_mean_auth = glass_auth.groupby(['doi'])['doi'].count().mean()
     glass_std_auth = glass_auth.groupby(['doi'])['doi'].count().std()
     grebenik_mean_auth = grebenik_auth.groupby(['doi'])['doi'].count().mean()
     grebenik_std_auth = grebenik_auth.groupby(['doi'])['doi'].count().std()
     simons_mean_auth = simons_auth.groupby(['doi'])['doi'].count().mean()
     simons_std_auth = simons_auth.groupby(['doi'])['doi'].count().std()
-
-    auth_short = pd.merge(auth_df.groupby(['doi'])['doi'].count().reset_index(name='count'),
-                          auth_df[['doi', 'prismcoverdate']].drop_duplicates(), how='left', left_on='doi',
+    auth_short = pd.merge(temp_auth .groupby(['doi'])['doi'].count().reset_index(name='count'),
+                          temp_auth [['doi', 'prismcoverdate']].drop_duplicates(), how='left', left_on='doi',
                           right_on='doi')
-    auth_short[['count', 'prismcoverdate']].sort_values(by='prismcoverdate')
+    auth_short = auth_short[['count', 'prismcoverdate']].sort_values(by='prismcoverdate')
     av_auth = pd.DataFrame(index=range(1947, 2021), columns=['av_auth',
                                                              'av_auth_+stdev',
                                                              'av_auth_-stdev',
@@ -597,7 +639,7 @@ def describe_norms(main_df, auth_df):
                  xy=(1976.25, .1), xytext=(1976.25, .09), rotation=270, fontsize=9, **csfont)
     ax3.annotate('1979-97: ' + str(int(grebenik_solo_auth * 100)) + '%',
                  xy=(1994.25, .1), xytext=(1994.25, .09), rotation=270, fontsize=9, **csfont)
-    ax3.annotate('1997-2020:' + str(int(simons_solo_auth * 100)) + '%',
+    ax3.annotate('1997-2020: ' + str(int(simons_solo_auth * 100)) + '%',
                  xy=(2016, 0.75), xytext=(2016, 0.55), rotation=270, fontsize=9, **csfont)
 
     # ax3.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
@@ -628,7 +670,7 @@ def keyword_tabulation(main_df):
     print(grouped.sort_values(ascending=False)[0:10])
 
 
-def continental_analysis(main_df, figure_path):
+def simple_continental_analysis(main_df, figure_path):
     topic_cont = pd.DataFrame(index=[],
                               columns=['Simple_Topic', 'Continent'])
     counter = 0
@@ -648,7 +690,33 @@ def continental_analysis(main_df, figure_path):
                                                             (topic_cont['Continent'] == column)])
         topic_count[column] = topic_count[column] / topic_count[column].sum()
     topic_count = topic_count.round(1)
-    topic_count.to_csv(os.path.join(figure_path, '..', 'tables', 'continental_analysis.csv'))
+    topic_count.to_csv(os.path.join(figure_path, '..', 'tables', 'continental_analysis_simple.csv'))
+    print(topic_count.to_string())
+
+
+def split_continental_analysis(main_df, figure_path):
+    topic_cont = pd.DataFrame(index=[],
+                              columns=['Topic', 'Continent'])
+    counter = 0
+    topic_set = set()
+    for index, row in main_df.iterrows():
+        for topic in row['Topic'].split(';'):
+            if len(topic.strip())>0:
+                topic_set.add(topic)
+                topic_cont.loc[counter, 'Topic'] = topic
+                topic_cont.loc[counter, 'Continent'] = row['Continent']
+                counter += 1
+    topic_cont['Topic'] = 'Topic ' + topic_cont['Topic']
+    topic_cont = topic_cont[(topic_cont['Topic'].notnull()) & (topic_cont['Continent'].notnull())]
+    topic_count = pd.DataFrame(index=topic_cont['Topic'].sort_values().unique(),
+                               columns=topic_cont['Continent'].unique())
+    for column in topic_count.columns:
+        for index in topic_count.index:
+            topic_count.loc[index, column] = len(topic_cont[(topic_cont['Topic'] == index) &
+                                                            (topic_cont['Continent'] == column)])
+        topic_count[column] = topic_count[column] / topic_count[column].sum()
+    topic_count = topic_count.round(1)
+    topic_count.to_csv(os.path.join(figure_path, '..', 'tables', 'continental_analysis_split.csv'))
     print(topic_count.to_string())
 
 
@@ -816,6 +884,7 @@ def network_summary(G, Gcc):
 
 
 def authorship_country(auth_df, d_path):
+    temp_auth = auth_df.drop_duplicates(subset=['doi', 'authorid'])
     cou_cou = auth_df.groupby(['aff_country'])['aff_country'].count()
     cou_cou = cou_cou.sort_values(ascending=False).reset_index(name='count')
     print('Number of unique countries from which authors write from: ' + \
@@ -828,10 +897,11 @@ def authorship_country(auth_df, d_path):
 
 
 def authorship_per_paper(auth_df):
+    temp_auth = auth_df.drop_duplicates(subset=['doi', 'authorid'])
     for years in ['194', '195', '196', '197', '198', '199', '200', '201']:
-        count_year = auth_df[auth_df['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
+        count_year = temp_auth[temp_auth['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
         print('Average number of authors per paper in the ' + years + '0s: ' + str(round(count_year.mean(), 3)))
-    grouped_auth_count = auth_df.groupby(['doi'])['doi'].count()
+    grouped_auth_count = temp_auth.groupby(['doi'])['doi'].count()
     grouped_auth_count = grouped_auth_count.reset_index(name='count')
     max_df = grouped_auth_count[grouped_auth_count['count'] == grouped_auth_count['count'].max()]
     max_doi = max_df.loc[max_df.index[0], 'doi']
@@ -847,14 +917,15 @@ def authorship_per_paper(auth_df):
     print('The number of papers with more than 3 authors is : ' + str(
         round(grouped_auth_count.groupby(['count'])['count'].count()[3:].sum(), 3)))
     for years in ['194', '195', '196', '197', '198', '199', '200', '201']:
-        count_year = auth_df[auth_df['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
+        count_year = temp_auth[temp_auth['prismcoverdate'].str.contains(years)].groupby(['doi'])['doi'].count()
         num_solo = count_year.reset_index(name='count').groupby(['count'])['count'].count()[1]
         print('Percent of solo authored papers in the ' + years + '0s: ' + str(round(num_solo / len(count_year), 3)))
 
 
 def make_network(auth_df):
-    auth_df = auth_df[auth_df['doi'].notnull()]
-    author_papers = auth_df[auth_df['authorid'].notnull()]
+    temp_auth = auth_df.drop_duplicates(subset=['doi', 'authorid'])
+    temp_auth = temp_auth[temp_auth['doi'].notnull()]
+    author_papers = temp_auth[temp_auth['authorid'].notnull()]
     authors_df = author_papers[['authorid', 'indexed_name']].drop_duplicates(subset=['authorid'])
     int_p_id = dict(enumerate(list(author_papers['doi'].unique())))
     int_a_id = dict(enumerate(list(author_papers['authorid'].unique())))
@@ -873,12 +944,12 @@ def make_network(auth_df):
     authors_df['degree_cent'] = authors_df['authorid'].apply(lambda l: cent_measure[a_int_id.get(l)])
     authors_df['degree_bet'] = authors_df['authorid'].apply(lambda l: bet_measure.get(a_int_id.get(l)))
     Gcc = sorted(nx.connected_components(G), key=len, reverse=True)
-    auth_df['prismcoverdate'] = auth_df['prismcoverdate'].astype('datetime64[ns]')
+    temp_auth['prismcoverdate'] = temp_auth['prismcoverdate'].astype('datetime64[ns]')
     time_df = pd.DataFrame(index=range(1947, 2021),
                            columns=['whole_edges', 'whole_nodes', 'whole_density',
                                     'giant_edges', 'giant_nodes', 'giant_density'])
     for year in range(1, 75):
-        year_df = auth_df[auth_df['prismcoverdate'].dt.year < 1947 + year]
+        year_df = temp_auth[temp_auth['prismcoverdate'].dt.year < 1947 + year]
         year_df = year_df[year_df['doi'].notnull()]
         year_author_papers = year_df[year_df['authorid'].notnull()]
         year_authors_df = year_author_papers[['authorid', 'indexed_name']].drop_duplicates(subset=['authorid'])
@@ -975,9 +1046,11 @@ def plot_G(G, fig_path):
     C = (G.subgraph(c) for c in nx.connected_components(G))
     colors1 = ['#d73027', '#2ca25f', '#f46d43', '#fdae61',
                '#abd9e9', '#74add1', '#4575b4']
+    isolate_counter = 0
     for g in C:
         if nx.number_of_nodes(g) == 1:
             c = colors1[0]
+            isolate_counter = isolate_counter + 1
         elif nx.number_of_nodes(g) == 2:
             c = colors1[1]
         elif nx.number_of_nodes(g) == 3:
@@ -993,6 +1066,7 @@ def plot_G(G, fig_path):
         nx.draw(g, pos, node_size=28, node_color=c, vmin=0.0,
                 vmax=1.0, with_labels=False, ax=ax1, alpha=0.7)
 #    ax1.set_title('A.', fontsize=24, loc='left', y=0.98, x=0.05)
+    print('There are a total of ' + str(isolate_counter) + ' isolates in the full network')
     plt.savefig(os.path.join(fig_path, 'networks.pdf'),
                 bbox_inches='tight')
     plt.savefig(os.path.join(fig_path, 'networks.png'),
@@ -1002,6 +1076,7 @@ def plot_G(G, fig_path):
 
 
 def make_mf_topics(auth_df, main_df, d_path):
+    temp_auth = auth_df.drop_duplicates(subset=['doi', 'authorid'])
     topic_df_long = pd.DataFrame(columns=['DOI', 'Topic', ])
     counter = 0  # this is bad!
     for index, row in main_df.iterrows():
@@ -1020,7 +1095,7 @@ def make_mf_topics(auth_df, main_df, d_path):
     topic_df_long = topic_df_long[topic_df_long['Topic'] != np.nan]
     topic_df_long = topic_df_long[topic_df_long['Topic'].notnull()]
 
-    authors = pd.merge(auth_df, topic_df_long[['DOI', 'Topic']], how='left',
+    authors = pd.merge(temp_auth, topic_df_long[['DOI', 'Topic']], how='left',
                        left_on='doi', right_on='DOI')
     authors['Simple_Topic'] = authors['Topic'].str.extract('(\d+)',
                                                            expand=False)
@@ -1085,7 +1160,7 @@ def make_men_women_child(topic_df_long, constrained=False):
     return mwc_df
 
 
-def make_mwc(main_df):
+def make_mwc(main_df, filename):
     topic_df_long = pd.DataFrame(columns=['DOI', 'Date', 'prismcoverdate',
                                           'citedbycount', 'Topic', 'abstract'])
     counter = 0  # this is bad!
@@ -1139,7 +1214,8 @@ def make_mwc(main_df):
     all_df = all_df.reset_index()
 
 
-    type_df_unconstrained = pd.merge(children_df_unconstrained, women_df_unconstrained, how='left', left_on='Topic', right_on='Topic')
+    type_df_unconstrained = pd.merge(all_df, women_df_unconstrained, how='left', left_on='Topic', right_on='Topic')
+    type_df_unconstrained = pd.merge(type_df_unconstrained, children_df_unconstrained, how='left', left_on='Topic', right_on='Topic')
     type_df_unconstrained = pd.merge(type_df_unconstrained, men_df_unconstrained, how='left', left_on='Topic', right_on='Topic')
     type_df_unconstrained = type_df_unconstrained.set_index('Topic')
     type_df_unconstrained = type_df_unconstrained[type_df_unconstrained.index != 'nan']
@@ -1147,35 +1223,22 @@ def make_mwc(main_df):
     type_df_unconstrained = type_df_unconstrained[type_df_unconstrained.index != '6']
     type_df_unconstrained = type_df_unconstrained.reindex(index=type_df_unconstrained.index[::-1])
     type_df_unconstrained['Men_Count'] = type_df_unconstrained['Men_Count'].fillna(0)
+    type_df_unconstrained['Women_Count'] = type_df_unconstrained['Women_Count'].fillna(0)
+    type_df_unconstrained['Children_Count'] = type_df_unconstrained['Children_Count'].fillna(0)
 
 
-    type_df = pd.merge(children_df, women_df, how='left', left_on='Topic', right_on='Topic')
+    type_df = pd.merge(all_df, women_df, how='left', left_on='Topic', right_on='Topic')
+    type_df = pd.merge(type_df, children_df, how='left', left_on='Topic', right_on='Topic')
     type_df = pd.merge(type_df, men_df, how='left', left_on='Topic', right_on='Topic')
-    type_df = pd.merge(type_df, all_df, how='left', left_on='Topic', right_on='Topic')
     type_df = type_df.set_index('Topic')
     type_df = type_df[type_df.index != 'nan']
     type_df = type_df[type_df.index != '4s']
     type_df = type_df[type_df.index != '6']
     type_df = type_df.reindex(index=type_df.index[::-1])
     type_df['Men_Count'] = type_df['Men_Count'].fillna(0)
+    type_df['Women_Count'] = type_df['Women_Count'].fillna(0)
+    type_df['Children_Count'] = type_df['Children_Count'].fillna(0)
 
-    39
-    fig = plt.figure(figsize=(17, 14), tight_layout=True)
-    ax1 = plt.subplot2grid((26, 39), (0, 0), colspan=8, rowspan=12)
-    ax2 = plt.subplot2grid((26, 39), (0, 10), colspan=8, rowspan=12)
-    ax3 = plt.subplot2grid((26, 39), (0, 20), colspan=8, rowspan=12)
-    ax4 = plt.subplot2grid((26, 39), (0, 30), colspan=8, rowspan=26)
-    ax5 = plt.subplot2grid((26, 39), (14, 0), colspan=8, rowspan=12)
-    ax6 = plt.subplot2grid((26, 39), (14, 10), colspan=8, rowspan=12)
-    ax7 = plt.subplot2grid((26, 39), (14, 20), colspan=8, rowspan=12)
-
-    colors = ['#4575b4',  # in reverse
-              '#91bfdb', '#91bfdb', '#91bfdb',
-              '#e0f3f8',
-              '#ffffbf', '#ffffbf', '#ffffbf',
-              '#fee090',
-              '#fc8d59', '#fc8d59', '#fc8d59',
-              '#d73027', '#d73027']
     type_df['Men_Count'] = (type_df['Men_Count'] / type_df['All_Count']) * 100
     type_df['Women_Count'] = (type_df['Women_Count'] / type_df['All_Count']) * 100
     type_df['Children_Count'] = (type_df['Children_Count'] / type_df['All_Count']) * 100
@@ -1184,151 +1247,163 @@ def make_mwc(main_df):
     type_df_unconstrained['Women_Count'] = (type_df_unconstrained['Women_Count'] / type_df['All_Count']) * 100
     type_df_unconstrained['Children_Count'] = (type_df_unconstrained['Children_Count'] / type_df['All_Count']) * 100
 
+    if filename == 'full':
+        fig = plt.figure(figsize=(17, 14), tight_layout=True)
+        ax1 = plt.subplot2grid((26, 39), (0, 0), colspan=8, rowspan=12)
+        ax2 = plt.subplot2grid((26, 39), (0, 10), colspan=8, rowspan=12)
+        ax3 = plt.subplot2grid((26, 39), (0, 20), colspan=8, rowspan=12)
+        ax4 = plt.subplot2grid((26, 39), (0, 30), colspan=8, rowspan=26)
+        ax5 = plt.subplot2grid((26, 39), (14, 0), colspan=8, rowspan=12)
+        ax6 = plt.subplot2grid((26, 39), (14, 10), colspan=8, rowspan=12)
+        ax7 = plt.subplot2grid((26, 39), (14, 20), colspan=8, rowspan=12)
 
-    type_df['Men_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                              edgecolor='k', ax=ax1,
-                              color=colors, width=0.8, linewidth=1.15)
-    type_df['Women_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                                edgecolor='k', ax=ax2,
-                                color=colors, width=0.8, linewidth=1.15)
-    type_df['Children_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                                   edgecolor='k', ax=ax3,
-                                   color=colors, width=0.8, linewidth=1.15)
-    type_df['All_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                              edgecolor='k', ax=ax4,
-                              color=colors, width=0.8, linewidth=1.15)
-    type_df_unconstrained['Men_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                                            edgecolor='k', ax=ax5,
-                                            color=colors, width=0.8, linewidth=1.15)
-    type_df_unconstrained['Women_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                                              edgecolor='k', ax=ax6,
-                                              color=colors, width=0.8, linewidth=1.15)
-    type_df_unconstrained['Children_Count'].plot(kind='barh', legend=False, alpha=0.7,
-                                                 edgecolor='k', ax=ax7,
-                                                 color=colors, width=0.8, linewidth=1.15)
-    for axx in [ax1, ax2, ax3, ax5, ax6, ax7]:
-        axx.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+        colors = ['#4575b4',  # in reverse
+                  '#91bfdb', '#91bfdb', '#91bfdb',
+                  '#e0f3f8',
+                  '#ffffbf', '#ffffbf', '#ffffbf',
+                  '#fee090', '#fee090', '#fee090',
+                  '#fc8d59', '#fc8d59', '#fc8d59',
+                  '#d73027', '#d73027']
 
-    for axy in [ax1, ax2, ax3, ax4, ax5, ax6, ax7]:
-        axy.yaxis.set_tick_params(labelsize=12)
+        type_df['Men_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                  edgecolor='k', ax=ax1,
+                                  color=colors, width=0.8, linewidth=1.15)
+        type_df['Women_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                    edgecolor='k', ax=ax2,
+                                    color=colors, width=0.8, linewidth=1.15)
+        type_df['Children_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                       edgecolor='k', ax=ax3,
+                                       color=colors, width=0.8, linewidth=1.15)
+        type_df['All_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                  edgecolor='k', ax=ax4,
+                                  color=colors, width=0.8, linewidth=1.15)
+        type_df_unconstrained['Men_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                                edgecolor='k', ax=ax5,
+                                                color=colors, width=0.8, linewidth=1.15)
+        type_df_unconstrained['Women_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                                  edgecolor='k', ax=ax6,
+                                                  color=colors, width=0.8, linewidth=1.15)
+        type_df_unconstrained['Children_Count'].plot(kind='barh', legend=False, alpha=0.7,
+                                                     edgecolor='k', ax=ax7,
+                                                     color=colors, width=0.8, linewidth=1.15)
+        for axx in [ax1, ax2, ax3, ax5, ax6, ax7]:
+            axx.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 
-    for axy in [ax2, ax3, ax4, ax6, ax7]:
-        axy.set_ylabel('')
+        for axy in [ax1, ax2, ax3, ax4, ax5, ax6, ax7]:
+            axy.yaxis.set_tick_params(labelsize=12)
 
-    ax1.set_ylabel('Topic Studied', fontsize=13, **csfont)
-    ax5.set_ylabel('Topic Studied', fontsize=13, **csfont)
-    ax1.set_xlabel('Focus on: Men Only', fontsize=13, **csfont)
-    ax2.set_xlabel('Focus on: Women Only', fontsize=13, **csfont)
-    ax3.set_xlabel('Focus on: Children Only', fontsize=13, **csfont)
-    ax4.set_xlabel('Total Number of Papers', fontsize=13, **csfont)
-    ax5.set_xlabel('Focus on: Men', fontsize=13, **csfont)
-    ax6.set_xlabel('Focus on: Women', fontsize=13, **csfont)
-    ax7.set_xlabel('Focus on: Children', fontsize=13, **csfont)
+        for axy in [ax2, ax3, ax4, ax6, ax7]:
+            axy.set_ylabel('')
 
-
-    ax1.set_title('A.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-    ax2.set_title('B.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-    ax3.set_title('C.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-    ax4.set_title('D.', fontsize=24, loc='left', y=1.005, x=-.1, **csfont)
-    ax5.set_title('E.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-    ax6.set_title('F.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-    ax7.set_title('G.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
-
-    rects = ax1.patches
-    labels = type_df['Men_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax1.text(height + 2.2, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-    rects = ax2.patches
-    labels = type_df['Women_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax2.text(height + 3.4, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-    rects = ax3.patches
-    labels = type_df['Children_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax3.text(height + 6.4, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-    rects = ax4.patches
-    labels = type_df['All_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 3
-        else:
-            rounder = 2
-        height = rect.get_width()
-        ax4.text(height + 35, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(label), ha='center', va='bottom')
+        ax1.set_ylabel('Topic Studied', fontsize=13, **csfont)
+        ax5.set_ylabel('Topic Studied', fontsize=13, **csfont)
+        ax1.set_xlabel('Focus on: Men Only', fontsize=13, **csfont)
+        ax2.set_xlabel('Focus on: Women Only', fontsize=13, **csfont)
+        ax3.set_xlabel('Focus on: Children Only', fontsize=13, **csfont)
+        ax4.set_xlabel('Total Number of Papers', fontsize=13, **csfont)
+        ax5.set_xlabel('Focus on: Men', fontsize=13, **csfont)
+        ax6.set_xlabel('Focus on: Women', fontsize=13, **csfont)
+        ax7.set_xlabel('Focus on: Children', fontsize=13, **csfont)
 
 
+        ax1.set_title('A.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+        ax2.set_title('B.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+        ax3.set_title('C.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+        ax4.set_title('D.', fontsize=24, loc='left', y=1.005, x=-.1, **csfont)
+        ax5.set_title('E.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+        ax6.set_title('F.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+        ax7.set_title('G.', fontsize=24, loc='left', y=1.02, x=-.1, **csfont)
+
+        rects = ax1.patches
+        labels = type_df['Men_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax1.text(height + 2.2, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
+
+        rects = ax2.patches
+        labels = type_df['Women_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax2.text(height + 3.4, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
+
+        rects = ax3.patches
+        labels = type_df['Children_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax3.text(height + 6.4, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
+
+        rects = ax4.patches
+        labels = type_df['All_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 3
+            else:
+                rounder = 2
+            height = rect.get_width()
+            ax4.text(height + 35, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(label), ha='center', va='bottom')
+
+        rects = ax5.patches
+        labels = type_df_unconstrained['Men_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax5.text(height + 6.66, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
+
+        rects = ax6.patches
+        labels = type_df_unconstrained['Women_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax6.text(height + 7, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
+
+        rects = ax7.patches
+        labels = type_df_unconstrained['Children_Count'].to_list()
+        for rect, label in zip(rects, labels):
+            if label < 10:
+                rounder = 2
+            else:
+                rounder = 1
+            height = rect.get_width()
+            ax7.text(height + 6, (rect.get_y() + rect.get_height() / 2) - .2,
+                     str(round(label, rounder)) + '%', ha='center', va='bottom')
 
 
-
-
-
-
-
-    rects = ax5.patches
-    labels = type_df_unconstrained['Men_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax5.text(height + 6.66, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-    rects = ax6.patches
-    labels = type_df_unconstrained['Women_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax6.text(height + 7, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-    rects = ax7.patches
-    labels = type_df_unconstrained['Children_Count'].to_list()
-    for rect, label in zip(rects, labels):
-        if label < 10:
-            rounder = 2
-        else:
-            rounder = 1
-        height = rect.get_width()
-        ax7.text(height + 6, (rect.get_y() + rect.get_height() / 2) - .2,
-                 str(round(label, rounder)) + '%', ha='center', va='bottom')
-
-
-    sns.despine()
-    plt.tight_layout(True)
-    fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
-    plt.savefig(os.path.join(fig_path, 'MWC_Topics.pdf'),
-                bbox_inches='tight')
-    plt.savefig(os.path.join(fig_path, 'MWC_Topics.png'),
-                bbox_inches='tight', dpi=600)
-    plt.savefig(os.path.join(fig_path, 'MWC_Topics.svg'),
-                bbox_inches='tight')
+        sns.despine()
+        plt.tight_layout(True)
+        fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
+        plt.savefig(os.path.join(fig_path, 'MWC_Topics' + filename + '.pdf'),
+                    bbox_inches='tight')
+        plt.savefig(os.path.join(fig_path, 'MWC_Topics' + filename + '.png'),
+                    bbox_inches='tight', dpi=600)
+        plt.savefig(os.path.join(fig_path, 'MWC_Topics' + filename + '.svg'),
+                    bbox_inches='tight')
+    else:
+        print(type_df)
+        print(type_df_unconstrained)
 
 
 def headline_topics(main_df):
@@ -1356,7 +1431,9 @@ def headline_topics(main_df):
                                                                        expand=False)
     pattern = '(\d{4})'
     topic_df_long['Year'] = topic_df_long['Date'].str.extract(pattern)
-    colors1 = ['#e31a1c', '#a6cee3', '#6a3d9a', '#33a02c', '#ff7f00', '#1f78b4', '#b15928']
+    colors1 = ['#e31a1c', '#a6cee3', '#6a3d9a',
+               '#33a02c', '#ff7f00', '#1f78b4',
+               '#b15928']
     fig = plt.figure(figsize=(13, 8), tight_layout=True)
     ax7 = plt.subplot2grid((7, 32), (6, 0), rowspan=1, colspan=16)
     ax1 = plt.subplot2grid((7, 32), (0, 0), rowspan=1, colspan=16)
@@ -1373,31 +1450,38 @@ def headline_topics(main_df):
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '1'],
                   s=2.5, orient='h', ax=ax1,
-                  color=colors1[0], linewidth=0.3)
+                  color=colors1[0], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '2'],
-                  s=3, orient='h', ax=ax2,
-                  color=colors1[1], linewidth=0.3)
+                  s=3.5, orient='h', ax=ax2,
+                  color=colors1[1], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '3'],
-                  s=3, orient='h', ax=ax3,
-                  color=colors1[2], linewidth=0.3)
+                  s=3.5, orient='h', ax=ax3,
+                  color=colors1[2], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '4'],
                   s=2.85, orient='h', ax=ax4,
-                  color=colors1[3], linewidth=0.3)
+                  color=colors1[3], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '5'],
-                  s=3, orient='h', ax=ax5,
-                  color=colors1[4], linewidth=0.3)
+                  s=3.5, orient='h', ax=ax5,
+                  color=colors1[4], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '6'],
-                  s=3, orient='h', ax=ax6,
-                  color=colors1[5], linewidth=0.3)
+                  s=3.5, orient='h', ax=ax6,
+                  color=colors1[5], linewidth=0.3,
+                  alpha=0.9)
     sns.swarmplot(x='prismcoverdate', y='Simple_Topic',
                   data=topic_df_long[topic_df_long['Simple_Topic'] == '7'],
-                  s=3, orient='h', ax=ax7,
-                  color=colors1[6], linewidth=0.3)
+                  s=3.5, orient='h', ax=ax7,
+                  color=colors1[6], linewidth=0.3,
+                  alpha=0.9)
 
     for axx in [ax1, ax2, ax3, ax4, ax5, ax6]:
         axx.set_xticklabels([])
@@ -1408,10 +1492,9 @@ def headline_topics(main_df):
         axx.set_xlim(topic_df_long['prismcoverdate'].min(), topic_df_long['prismcoverdate'].max())
     ax7.set_xlim(topic_df_long['prismcoverdate'].min(), topic_df_long['prismcoverdate'].max())
 
-    import matplotlib.dates as mdates
     for index, row in topic_df.iterrows():
         if ';' in row['Topic']:
-            color = '#d3d3d3'
+            color = '#f1f1f1'
             cites = row['citedbycount']
             date = pd.to_datetime(row['prismcoverdate'])
         elif ('7' in row['Topic']):
@@ -1460,48 +1543,49 @@ def headline_topics(main_df):
     ax7.set_ylabel('')
     ax8.yaxis.set_label_position("right")
     ax8.set_ylabel('Citation Count')
-    legend_elements = [Patch(facecolor=(227 / 255, 26 / 255, 28 / 255, 0.3),
+
+    legend_elements = [Patch(facecolor=(141 / 255, 160 / 255, 203 / 255, 0.5),
                              lw=0.5, label="Fertility", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(166 / 255, 206 / 255, 227 / 255, 0.3),
+                       Patch(facecolor=(252 / 255, 141 / 255, 98 / 255, 0.5),
                              lw=0.5, label="Mortality", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(106 / 255, 61 / 255, 154 / 255, 0.3),
+                       Patch(facecolor=(102 / 255, 194 / 255, 165 / 255, 0.5),
                              lw=0.5, label="Migration", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(51 / 255, 160 / 255, 44 / 255, 0.3),
+                       Patch(facecolor=(231 / 255, 138 / 255, 195 / 255, 0.5),
                              lw=0.5, label="Macro", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(255 / 255, 127 / 255, 0, 0.3),
+                       Patch(facecolor=(166 / 255, 216 / 255, 84/255, 0.5),
                              lw=0.5, label="Methods", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(31 / 255, 120 / 255, 180 / 255, 0.3),
+                       Patch(facecolor=(255 / 255, 217 / 255, 47 / 255, 0.5),
                              lw=0.5, label="Family", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(177 / 255, 89 / 255, 40 / 255, 0.3),
+                       Patch(facecolor=(229 / 255, 196 / 255, 148 / 255, 0.5),
                              lw=0.5, label="Other", edgecolor=(0, 0, 0, 1)),
-                       Patch(facecolor=(211 / 255, 211 / 255, 211 / 255, 0.3),
+                       Patch(facecolor=(241 / 255, 241 / 255, 241 / 255, 0.5),
                              lw=0.5, label="Multiple", edgecolor=(0, 0, 0, 1))]
-    ax8.legend(handles=legend_elements, loc='upper left', frameon=True,
+    ax8.legend(handles=legend_elements, loc='upper left', frameon=True, edgecolor='k',
                fontsize=10, framealpha=1)
     ax8.annotate("Bumpass and Lu (2000)\nCitation Count: 728\nTopic: 6a",
                  xy=(11000, 728), xycoords='data', **csfont,
                  xytext=(10750, 580), fontsize=9, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
-                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
-    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a and 4c",
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.5, edgecolor=(0,0,0,1)),
+                 arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, edgecolor='k'))
+    ax8.annotate("Preston (1975)\nCitation Count: 704\nTopics: 2a, 4a, 4c",
                  xy=(2000, 718), xycoords='data', **csfont,
                  xytext=(2750, 570), fontsize=9, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.5, edgecolor=(0,0,0,1)),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
     ax8.annotate("Cleland and Wilson (1987)\nCitation Count: 433\nTopic: 1b",
                  xy=(6200, 442), xycoords='data', **csfont,
                  xytext=(9050, 350), fontsize=9, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.5, edgecolor=(0,0,0,1)),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
-    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a:4b",
+    ax8.annotate("Rogers (1979)\nCitation Count: 310\nTopics: 2a, 4b",
                  xy=(3300, 300), xycoords='data', **csfont,
                  xytext=(-3200, 450), fontsize=9, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.5, edgecolor=(0,0,0,1)),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
-    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c:2a",
+    ax8.annotate("McKeown and Record (1962)\nCitation Count: 265\nTopics: 4c, 2a",
                  xy=(-2800, 260), xycoords='data', **csfont,
                  xytext=(-6500, 342), fontsize=9, textcoords='data',
-                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.25, color='k'),
+                 bbox=dict(boxstyle="round, pad=1", fc="w", linewidth=0.5, edgecolor=(0,0,0,1)),
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.5, color='k'))
 
     ax1.set_ylabel('Fertility', rotation=90, **csfont)
@@ -1531,7 +1615,7 @@ def headline_topics(main_df):
 
 
 def gender_over_time(auth_df):
-    auth_df_g = auth_df.copy()
+    auth_df_g = auth_df.drop_duplicates(subset=['doi', 'authorid']).copy()
     auth_df_g.loc[:, 'prismcoverdate'] = pd.to_datetime(auth_df_g['prismcoverdate'], format='%Y-%m-%d')
     auth_df_g.loc[:, 'Year'] = auth_df_g['prismcoverdate'].dt.year
     gender_time_df = pd.DataFrame(index=auth_df_g['Year'].unique(),
@@ -1628,8 +1712,28 @@ def gender_over_time(auth_df):
     ax2.plot(gender_time_df.index, gender_time_df['pc_guess_fem_10_upper'] * 100, color=color[1],
              linewidth=0.3, linestyle='--', dashes=(12, 6))
     ax2.plot(gender_time_df.index, gender_time_df['pc_guess_fem_10'] * 100, color=color[0])
-    ax1.set_ylim(10, 55)
-    ax2.set_ylim(10, 55)
+    temp = gender_time_df[gender_time_df['pc_guess_fem_10'].notnull()]
+    temp = temp[['pc_guess_fem_10', 'pc_detect_fem_10']]
+    temp = temp.astype(float)
+    print(temp.corr())
+    print('The max of Gender Detector is: ' +\
+          str(gender_time_df['pc_detect_fem_10'].max()))
+    print('The min of Gender Detector is: ' +\
+          str(gender_time_df['pc_detect_fem_10'].min()))
+    print('The max of Gender Guesser is: ' +\
+          str(gender_time_df['pc_guess_fem_10'].max()))
+    print('The min of Gender Guesser is: ' +\
+          str(gender_time_df['pc_guess_fem_10'].min()))
+    ax1.set_ylim(7.5, 55)
+    ax1.spines['left'].set_bounds(10, 55)
+    ax1.set_xlim(1951, 2020)
+    ax1.spines['bottom'].set_bounds(1955, 2020)
+
+    ax2.set_ylim(7.5, 55)
+    ax2.spines['left'].set_bounds(10, 55)
+    ax2.set_xlim(1951, 2020)
+    ax2.spines['bottom'].set_bounds(1955, 2020)
+
     ax1.set_ylabel('Female Authorship: Ten Year Rolling Interval', **csfont, fontsize=13)
     ax2.set_ylabel('Female Authorship: Ten Year Rolling Interval', **csfont, fontsize=13)
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
@@ -1697,6 +1801,8 @@ def gender_over_time(auth_df):
                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3, rad=-0.5", linewidth=0.75, color='k'))
     plt.tight_layout(pad=3)
     fig_path = os.path.join(os.getcwd(), '..', 'article', 'figures')
+
+
     plt.savefig(os.path.join(fig_path, 'gender_over_time.pdf'),
                 bbox_inches='tight')
     plt.savefig(os.path.join(fig_path, 'gender_over_time.png'),
@@ -1728,10 +1834,10 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, G, Gcc, d_path):
     for index, row in temp.iterrows():
         print('In our main dataframe there are ' + str(row['Count']) + ' ' +
               str(row['subtypedescription']) + 's.')
-    print('Total number of authorships: ' + str(len(auth_df)))
+    print('Total number of authorships: ' + str(len(auth_df.drop_duplicates(subset=['doi', 'authorid']))))
     print('Total number of unique authors: ' + str(len(auth_df['authorid'].unique())))
     print('Average number of references per paper: ' + str(len(ref_df) / len(main_df)))
-    print('Average number of authors per paper: ' + str(round(len(auth_df) / len(auth_df['doi'].unique()), 3)))
+    print('Average number of authors per paper: ' + str(round(len(auth_df.drop_duplicates(subset=['doi', 'authorid'])) / len(auth_df['doi'].unique()), 3)))
     grouped_ref_count = ref_df.groupby(['doi'])['doi'].count()
     grouped_ref_count = grouped_ref_count.reset_index(name='count')
     max_df = grouped_ref_count[grouped_ref_count['count'] == grouped_ref_count['count'].max()]
@@ -1866,7 +1972,7 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aff_series = aff_count[0:10].set_index('aff_orgs')
     aff_series = aff_series.sort_values(by='count', ascending=True)['count']
     y_pos = np.arange(len(aff_series))
-    aa = ax4.barh(y_pos, aff_series.tolist(), edgecolor='k', alpha=0.5)
+    aa = ax4.barh(y_pos, aff_series.tolist(), edgecolor='k', alpha=0.75)
     aa[0].set_color('#ffffbf')
     aa[0].set_edgecolor('k')
     aa[1].set_color('#1f78b4')
@@ -1877,11 +1983,11 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aa[3].set_edgecolor('k')
     aa[4].set_color('#fc8d59')
     aa[4].set_edgecolor('k')
-    aa[5].set_color('#ffffbf')
+    aa[5].set_color('#fc8d59')
     aa[5].set_edgecolor('k')
     aa[6].set_color('#fc8d59')
     aa[6].set_edgecolor('k')
-    aa[7].set_color('#fc8d59')
+    aa[7].set_color('#ffffbf')
     aa[7].set_edgecolor('k')
     aa[8].set_color('#fc8d59')
     aa[8].set_edgecolor('k')
@@ -1901,9 +2007,9 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
         y_value = rect.get_y() + rect.get_height() / 2
         ax4.text(x_value + 10, y_value - .225, str(round((label / aff_count['count'].sum()) * 100, 2)) + '%',
                  ha='center', va='bottom')
-    blue_patch = patches.Patch(facecolor='#fdcdac', edgecolor='k', label='US', linewidth=0.75)
-    red_patch = patches.Patch(facecolor='#cbd5e8', edgecolor='k', label='Europe', linewidth=0.75)
-    yellow_patch = patches.Patch(facecolor='#fff2ae', edgecolor='k', label='International', linewidth=0.75)
+    blue_patch = patches.Patch(facecolor='#1f78b4', edgecolor='k', label='US', linewidth=0.75, alpha=0.75)
+    red_patch = patches.Patch(facecolor='#fc8d59', edgecolor='k', label='Europe', linewidth=0.75, alpha=0.75)
+    yellow_patch = patches.Patch(facecolor='#ffffbf', edgecolor='k', label='International', linewidth=0.75, alpha=0.75)
     ax4.legend(handles=[red_patch, blue_patch, yellow_patch], frameon=True, framealpha=1, edgecolor='k')
 
     # make choro
@@ -2039,7 +2145,7 @@ def make_gdf(df, shapefile):
 
 
 def make_author_table(auth_df, main_df, d_path, table_filter):
-    auth_df1 = auth_df  # .drop_duplicates(subset=['doi', 'authorid']).copy()
+    auth_df1 = auth_df.drop_duplicates(subset=['doi', 'authorid']).copy()
     auth_df1.loc[:, 'authorid'] = auth_df1['authorid']
     auth_papercount = auth_df1.groupby(['authorid'])['authorid'].count().sort_values(ascending=False)
     auth_papercount = auth_papercount.reset_index(name='Papers')

@@ -28,29 +28,30 @@ def print_lda_output_topics(d_path):
             print(line)
 
 
-def make_mallet_model(main_df, d_path, stop):
+def make_mallet_model(main_df, d_path, stop, field, ntopics):
     mallet_path = 'mallet/bin/mallet'
-    main_df_notnull = main_df[main_df['clean_abstract'].notnull()].copy()
+    main_df_notnull = main_df[main_df['abstract'].str.strip()!='nan.'].copy()
     main_df_notnull = main_df_notnull[main_df_notnull['abstract_length']>20]
+    main_df_notnull = main_df_notnull[main_df_notnull['Title'].notnull()]
     token_vectorizer = CountVectorizer(tokenizer=reflection_tokenizer,
                                        #max_df=500, min_df=2,
                                        stop_words=stop, ngram_range=(1, 3))
-    token_vectorizer.fit(main_df_notnull['clean_abstract'])
-    doc_word = token_vectorizer.transform(main_df_notnull['clean_abstract']).transpose()
+    token_vectorizer.fit(main_df_notnull[field])
+    doc_word = token_vectorizer.transform(main_df_notnull[field]).transpose()
     corpus = matutils.Sparse2Corpus(doc_word)
     word2id = dict((v, k) for v, k in token_vectorizer.vocabulary_.items())
     id2word = dict((v, k) for k, v in token_vectorizer.vocabulary_.items())
     dictionary = corpora.Dictionary()
     dictionary.id2token = id2word
     dictionary.token2id = word2id
-    texts = main_df_notnull['clean_abstract'].apply(lambda x: x.split()).to_list()
-    ldamallet = LdaMallet(mallet_path, corpus=corpus, num_topics=25,
+    texts = main_df_notnull[field].apply(lambda x: x.split()).to_list()
+    ldamallet = LdaMallet(mallet_path, corpus=corpus, num_topics=ntopics,
                           id2word=id2word, random_seed = 77)
     mallet_topics = pd.DataFrame(index=list(id2word.values()),
-                                 columns = ['Topic ' + str(x) for x in range(1, 26)])
-    print(ldamallet.show_topics(num_topics=25,
+                                 columns = ['Topic ' + str(x) for x in range(1, ntopics+1)])
+    print(ldamallet.show_topics(num_topics=ntopics,
                                 num_words=10, formatted=True))
-    for topic in ldamallet.show_topics(num_topics=25,
+    for topic in ldamallet.show_topics(num_topics=ntopics,
                                        num_words=len(id2word), formatted=False):
         for tupler in topic[1]:
             mallet_topics.loc[tupler[0], 'Topic ' + str(topic[0]+1)] = tupler[1]

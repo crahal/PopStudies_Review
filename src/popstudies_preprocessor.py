@@ -6,6 +6,8 @@ import gender_guesser.detector as gender
 from gender_detector import gender_detector as gd
 import re
 from popstudies_lda import reflection_tokenizer
+from genderize import Genderize
+import requests
 
 
 def make_stopwords():
@@ -69,6 +71,41 @@ def get_gender_detect(x, detector):
         return 'unknown'
     else:
         return detector.guess(x)
+
+
+def call_genderizeio(auth_df):
+    unk_df = auth_df[(auth_df['clean_gender']=='unknown') &
+                     (auth_df['forename']!='NAN') &
+                     (auth_df['forename'].str.len()>2)]
+    print('There are ' + str(len(unk_df)) +
+          ' names we dont know about before calling genderize...')
+    unk_df = pd.DataFrame(unk_df['forename'].drop_duplicates())
+    r = requests.get("https://api.genderize.io?name=test")
+    print(r.headers['X-Rate-Limit-Remaining'] + ' genderize calls remaining...!')
+    if int(r.headers['X-Rate-Limit-Remaining']) >= len(unk_df):
+        genderize_return = (Genderize().get(unk_df['forename'].to_list()))
+        unk_df['genderize_return'] = ''
+        counter = 0
+        for index, row in unk_df.iterrows():
+            unk_df.at[index, 'genderize_return'] = genderize_return[counter]['gender']
+            counter = counter + 1
+        #call_genderizeio()
+        unk_df.to_csv('unknown_names.csv')
+        unk_df = unk_df[(unk_df['genderize_return']=='male') |
+                        (unk_df['genderize_return']=='female')]
+        auth_df = pd.merge(auth_df, unk_df, how='left', left_on='forename', right_on='forename')
+        auth_df['clean_gender'] = np.where(auth_df['genderize_return']=='male',
+                                           auth_df['genderize_return'],
+                                           auth_df['clean_gender'])
+        auth_df['clean_gender'] = np.where(auth_df['genderize_return']=='female',
+                                           auth_df['genderize_return'],
+                                           auth_df['clean_gender'])
+    unk_df = auth_df[(auth_df['clean_gender']=='unknown') &
+                     (auth_df['forename']!='NAN') &
+                     (auth_df['forename'].str.len()>2)]
+    print('After calling the genderize API, there are still ' + str(len(unk_df)) +
+          ' names which we dont know about!...')
+    return auth_df
 
 
 def build_datasets(d_path):
@@ -196,8 +233,9 @@ def build_datasets(d_path):
 
     main_df = continent_merger(main_df, d_path)
     main_df['clean_abstract'] = main_df['abstract'].apply(clean_abstract)
-    main_df['abstract_length'] = main_df    ['clean_abstract'].str.len()
+    main_df['abstract_length'] = main_df['clean_abstract'].str.len()
     main_df = make_lemmas(main_df, d_path)
+    auth_df = call_genderizeio(auth_df)
     return main_df, ref_df, auth_df
 
 
