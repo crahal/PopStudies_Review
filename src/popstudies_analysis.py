@@ -310,8 +310,8 @@ def visualise_mallet(mallet_topics):
 
 def describe_norms(main_df, auth_df):
     main_df['pages'] = main_df['pageend'] - main_df['pagestart'] + 1
-    colors1 = ['#1f78b4', '#fcdb81', '#d73027', '#0B6623']
-    fig = plt.figure(figsize=(13, 8), tight_layout=True)
+    colors1 = ['#1f78b4', '#F7B706', '#d73027', '#0B6623']
+    fig = plt.figure(figsize=(12, 9.5), tight_layout=True)
     ax = plt.subplot2grid((8, 14), (0, 0), rowspan=5, colspan=14)
     ax2 = plt.subplot2grid((8, 14), (5, 0), rowspan=3, colspan=7)
     ax3 = plt.subplot2grid((8, 14), (5, 7), rowspan=3, colspan=7)
