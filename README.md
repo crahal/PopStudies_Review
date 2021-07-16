@@ -8,7 +8,7 @@
 
 ## Introduction
 
-This is a repository to accompany a scientometric review of the journal Population Studies, written by Melinda C. Mills and Charles Rahal, entitled 'Disrupting Demography: A study of Population Studies'. It analyzes the ~2000 papers published by the journal in honour of the journal's 75th anniversary. Links to open-access (OSF) versions of the Paper will follow in due course.
+This is a repository to accompany a scientometric review of the journal Population Studies, written by Melinda C. Mills and Charles Rahal, entitled 'Disrupting Demography: A study of Population Studies'. It analyzes the ~2000 papers published by the journal in honour of the journal's 75th anniversary. A Link to open-access (OSF) versions of the Paper will can be found [here](https://osf.io/preprints/socarxiv/ehy3w/).
 
 ## Pre-reqs
 
