@@ -3,7 +3,7 @@
 
 # PopStudies Review
 
-[![Generic badge](https://img.shields.io/badge/Python-3.7-<red>.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/License-MIT-orange.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/Maintained-Yes-purple.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/BuildPassing-Yes-red.svg)](https://shields.io/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5150120.svg)](https://doi.org/10.5281/zenodo.5150120)
+[![Generic badge](https://img.shields.io/badge/Python-3.7-<red>.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/License-GNU-orange.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/Maintained-Yes-purple.svg)](https://shields.io/) [![Generic badge](https://img.shields.io/badge/BuildPassing-Yes-red.svg)](https://shields.io/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5150120.svg)](https://doi.org/10.5281/zenodo.5150120)
 ---
 
 ## Introduction
