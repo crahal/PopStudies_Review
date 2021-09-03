@@ -3,7 +3,10 @@ keys/elsevier_apikey
 src/R_Melinda/
 src/lda_stuff_come_back_to
 src/GuidedLDA/
+src/mallet/
 literature/
+literature/*
+literature
 x-special/nautilus-clipboard
 copy
 literature/David%20Victor%20Glass%201911%201978.pdf

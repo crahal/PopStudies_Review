@@ -423,30 +423,30 @@ def describe_norms(main_df, auth_df):
     all_max = main_df['pages'].max()
     all_std = main_df['pages'].std()
 
-    ax.hlines(glass_mean + 2 * glass_std, '1947-01-01', '1979-03-01',
+    ax.hlines(glass_mean + 2 * glass_std, np.datetime64('1947-01-01'), np.datetime64('1979-03-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[0])
-    ax.hlines(glass_mean - 2 * glass_std, '1947-01-01', '1979-03-01',
+    ax.hlines(glass_mean - 2 * glass_std, np.datetime64('1947-01-01'), np.datetime64('1979-03-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[0])
     ax.fill_between(main_df['prismcoverdate'][0:845],
                     glass_mean - 2 * glass_std, glass_mean + 2 * glass_std,
                     alpha=0.065, color=colors1[0])
-    ax.hlines(grebenik_mean + 2 * grebenik_std, '1979-03-01', '1997-03-01',
+    ax.hlines(grebenik_mean + 2 * grebenik_std, np.datetime64('1979-03-01'), np.datetime64('1997-03-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[1])
-    ax.hlines(grebenik_mean - 2 * grebenik_std, '1979-03-01', '1997-03-01',
+    ax.hlines(grebenik_mean - 2 * grebenik_std, np.datetime64('1979-03-01'), np.datetime64('1997-03-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[1])
     ax.fill_between(main_df['prismcoverdate'][845:1344],
                     grebenik_mean - 2 * grebenik_std, grebenik_mean + 2 * grebenik_std,
                     alpha=0.065, color=colors1[1])
-    ax.hlines(Simons_mean + 2 * Simons_std, '1997-03-01', '2017-01-01',
+    ax.hlines(Simons_mean + 2 * Simons_std, np.datetime64('1997-03-01'), np.datetime64('2017-01-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[2])
-    ax.hlines(Simons_mean - 2 * Simons_std, '1997-03-01', '2017-01-01',
+    ax.hlines(Simons_mean - 2 * Simons_std, np.datetime64('1997-03-01'), np.datetime64('2017-01-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[2])
     ax.fill_between(main_df['prismcoverdate'][1344:1790],
                     Simons_mean - 2 * Simons_std, Simons_mean + 2 * Simons_std,
                     alpha=0.065, color=colors1[2])
-    ax.hlines(ermisch_mean + 2 * ermisch_std, '2017-01-01', '2020-09-01',
+    ax.hlines(ermisch_mean + 2 * ermisch_std, np.datetime64('2017-01-01'), np.datetime64('2020-09-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[3])
-    ax.hlines(ermisch_mean - 2 * ermisch_std, '2017-01-01', '2020-09-01',
+    ax.hlines(ermisch_mean - 2 * ermisch_std, np.datetime64('2017-01-01'), np.datetime64('2020-09-01'),
               linestyle='--', linewidth=0.75, alpha=0.55, color=colors1[3])
     ax.fill_between(main_df['prismcoverdate'][1790:],
                     ermisch_mean - 2 * ermisch_std, ermisch_mean + 2 * ermisch_std,
@@ -454,7 +454,7 @@ def describe_norms(main_df, auth_df):
     ax.set_xlabel('')
     ax.set_ylabel('Page Length (pages)', fontsize=12, **csfont)
     ax.set_ylim(-5, 75)
-    ax.set_xlim('1946-01-01', '2022-01-01')
+    ax.set_xlim(np.datetime64('1946-01-01'), np.datetime64('2022-01-01'))
 
     xmin, xmax = (-8250, 3250)
     xspan = xmax - xmin
@@ -1408,7 +1408,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax1.text(height + 2.2, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax1.text(height + ax1.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
         rects = ax2.patches
@@ -1419,7 +1419,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax2.text(height + 3.4, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax2.text(height + ax2.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
         rects = ax3.patches
@@ -1430,7 +1430,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax3.text(height + 6.4, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax3.text(height + ax3.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
         rects = ax4.patches
@@ -1441,7 +1441,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 2
             height = rect.get_width()
-            ax4.text(height + 35, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax4.text(height + ax4.get_xlim()[1]/15, (rect.get_y() + rect.get_height() / 2) - .15,
                      str(label), ha='center', va='bottom')
 
         rects = ax5.patches
@@ -1452,7 +1452,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax5.text(height + 6.66, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax5.text(height + ax5.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
         rects = ax6.patches
@@ -1463,7 +1463,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax6.text(height + 7, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax6.text(height + ax6.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
         rects = ax7.patches
@@ -1474,7 +1474,7 @@ def make_mwc(main_df, filename):
             else:
                 rounder = 1
             height = rect.get_width()
-            ax7.text(height + 6, (rect.get_y() + rect.get_height() / 2) - .2,
+            ax7.text(height + ax7.get_xlim()[1]/10, (rect.get_y() + rect.get_height() / 2) - .225,
                      str(round(label, rounder)) + '%', ha='center', va='bottom')
 
 
@@ -1763,7 +1763,8 @@ def gender_over_time_oneplot(auth_df):
     ax1.plot(gender_time_df.index, gender_time_df['pc_clean_fem_10_upper'] * 100, color=color[1],
              linewidth=0.4, linestyle='-', dashes=(12, 6))
     ax1.plot(gender_time_df.index, gender_time_df['pc_clean_fem_10'] * 100, color=color[0],
-             linewidth = 1.6)
+             linewidth=1.6)
+    print(gender_time_df)
 
     temp = gender_time_df[gender_time_df['pc_clean_fem_10'].notnull()]
     temp = temp[['pc_clean_fem_10']]
@@ -2113,9 +2114,11 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, G, Gcc, d_path):
 
 def make_affil_plot(main_df, auth_df, d_path, figure_path):
     titlesize = 15
+    print('hello')
     markersize = 10
     region_lookup = pd.read_csv(os.path.join(d_path, 'support', 'region_lookup.csv'))
     country_count = make_country_count(auth_df)
+    print('helloooo')
     gdf = make_gdf(country_count, os.path.join(d_path, 'shapefiles',
                                                'global.shp'))
     gdf['count'] = gdf['count'].fillna(0)
@@ -2170,20 +2173,19 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
 
     # make tsplot
     # old
-#    time_df['affiliations'] = time_df['affiliations'] / time_df['affiliations'][2020]
-#    time_df['countries'] = time_df['countries'] / time_df['countries'][2020]
-#    ax2.step(y=time_df['affiliations'].astype(float), label='Affiliations',
-#             x=time_df.index.astype(int), color='#fc8d59', alpha=0.8)
-#    ax2.step(y=time_df['countries'].astype(float), label='Countries',
-#             x=time_df.index.astype(int), color='#1f78b4', alpha=0.8)
-#    legend = ax2.legend(loc='upper left', edgecolor='k', frameon=True, fontsize=11, ncol=1, framealpha=1)
-#    ax2.xaxis.grid(linestyle='--', alpha=0.5)
-#    ax2.yaxis.grid(linestyle='--', alpha=0.5)
-#    legend.get_frame().set_linewidth(0.5)
-#    ax2.set_ylabel('Cumulative fraction of contributions', fontsize=12, **csfont)
+    #    time_df['affiliations'] = time_df['affiliations'] / time_df['affiliations'][2020]
+    #    time_df['countries'] = time_df['countries'] / time_df['countries'][2020]
+    #    ax2.step(y=time_df['affiliations'].astype(float), label='Affiliations',
+    #             x=time_df.index.astype(int), color='#fc8d59', alpha=0.8)
+    #    ax2.step(y=time_df['countries'].astype(float), label='Countries',
+    #             x=time_df.index.astype(int), color='#1f78b4', alpha=0.8)
+    #    legend = ax2.legend(loc='upper left', edgecolor='k', frameon=True, fontsize=11, ncol=1, framealpha=1)
+    #    ax2.xaxis.grid(linestyle='--', alpha=0.5)
+    #    ax2.yaxis.grid(linestyle='--', alpha=0.5)
+    #    legend.get_frame().set_linewidth(0.5)
+    #    ax2.set_ylabel('Cumulative fraction of contributions', fontsize=12, **csfont)
 
-
-#   RnR version
+    #   RnR version
 
     region_lookup['Country'] = region_lookup['Country'].str.strip()
     region_lookup['Region'] = region_lookup['Region'].str.strip()
@@ -2227,12 +2229,12 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     df_region_year = df_region_year.rename({'ASIA (EX. MIDDLE EAST)': 'Asia (Ex. Mid East)'}, axis=1)
     df_region_year = df_region_year.set_index('index')
     df_region_year.index = df_region_year.index.astype(int)
-    colors1=[colors1[5], colors1[3], colors1[2], colors1[0],colors1[1], colors1[4]]
+    colors1 = [colors1[5], colors1[3], colors1[2], colors1[0], colors1[1], colors1[4]]
     df_region_year.plot(kind='area', stacked=True,
                         color=colors1,
                         ax=ax2, alpha=0.55, linewidth=1)
 
-    #ax2.xaxis.set_major_locator(plt.MaxNLocator(5))
+    # ax2.xaxis.set_major_locator(plt.MaxNLocator(5))
     ax2.set_xlim(1980, 2020)
     ax2.legend(frameon=False, loc='upper left')
     ax2.set_xlabel('')
@@ -2246,8 +2248,6 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     patch6 = patches.Patch(facecolor=colors1[5], edgecolor='k', label='Other', linewidth=0.75, alpha=0.55)
     ax2.legend(handles=[patch1, patch2, patch3, patch4, patch5, patch6],
                frameon=False, framealpha=1, edgecolor='k', loc='upper left')
-
-
 
     # make bargraph
     aff_count['aff_orgs'] = aff_count['aff_orgs'].str.replace('University of Pennsylvania', 'U. Penn')
@@ -2335,17 +2335,17 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
         legend_handle._legmarker.set_markeredgewidth(1)
         legend_handle._legmarker.set_markeredgecolor('k')
     ax1.set_title('A.', fontsize=titlesize + 6, y=1.025, **csfont, loc='left', x=-.215)
-#    ax1.set_title('Continents', fontsize=16,
-#                  y=1.03, **csfont, loc='center')
+    #    ax1.set_title('Continents', fontsize=16,
+    #                  y=1.03, **csfont, loc='center')
     ax2.set_title('B.', fontsize=titlesize + 6, y=1.025, **csfont, loc='left')
-#    ax2.set_title('Time', fontsize=16,
-#                  y=1.03, **csfont, loc='center')
+    #    ax2.set_title('Time', fontsize=16,
+    #                  y=1.03, **csfont, loc='center')
     ax4.set_xlabel('Number of contributions', fontsize=12)
     ax4.set_title('C.', fontsize=titlesize + 6, y=1.025, **csfont, loc='left')
-#    ax4.set_title('Institutions (Top 10)', fontsize=16,
-#                  y=1.03, **csfont, loc='center')
-#    ax3.set_title('Countries', **csfont,
-#                  fontsize=16, y=1)
+    #    ax4.set_title('Institutions (Top 10)', fontsize=16,
+    #                  y=1.03, **csfont, loc='center')
+    #    ax3.set_title('Countries', **csfont,
+    #                  fontsize=16, y=1)
     ax3.set_title('D.', **csfont, fontsize=titlesize + 6, loc='left', y=1, x=0.025)
     sns.despine(ax=ax2)
     sns.despine(ax=ax4)
