@@ -1260,6 +1260,9 @@ def make_mwc(main_df, filename):
                     counter += 1
         else:
             print(row['DOI'])
+    topic_df_long['Topic'] = topic_df_long['Topic'].str.replace('5a', '5')
+    topic_df_long['Topic'] = topic_df_long['Topic'].str.replace('7a', '7')
+    print(topic_df_long)
 
     topic_df_long = topic_df_long[topic_df_long['Topic'] != 'nan']
     topic_df_long = topic_df_long[topic_df_long['Topic'] != np.nan]
@@ -2114,11 +2117,9 @@ def summarize_scrape_and_curate(main_df, auth_df, ref_df, G, Gcc, d_path):
 
 def make_affil_plot(main_df, auth_df, d_path, figure_path):
     titlesize = 15
-    print('hello')
     markersize = 10
     region_lookup = pd.read_csv(os.path.join(d_path, 'support', 'region_lookup.csv'))
     country_count = make_country_count(auth_df)
-    print('helloooo')
     gdf = make_gdf(country_count, os.path.join(d_path, 'shapefiles',
                                                'global.shp'))
     gdf['count'] = gdf['count'].fillna(0)
@@ -2278,8 +2279,8 @@ def make_affil_plot(main_df, auth_df, d_path, figure_path):
     aa[8].set_edgecolor('k')
     aa[9].set_color('#fc8d59')
     aa[9].set_edgecolor('k')
-    ax4.yaxis.grid(linestyle='--', alpha=0.5)
-    ax4.xaxis.grid(linestyle='--', alpha=0.5)
+#   ax4.yaxis.grid(linestyle='--', alpha=0.5)
+#   ax4.xaxis.grid(linestyle='--', alpha=0.5)
 
     ax4.yaxis.set_major_locator(mtick.FixedLocator(range(0, len(aff_series))))
     ax4.set_yticklabels(aff_series.index)

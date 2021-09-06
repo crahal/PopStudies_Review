@@ -7,7 +7,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 import nltk
 from tqdm.notebook import tqdm
-# import guidedlda
+import guidedlda
 from topics import seed_topic_list
 from warnings import simplefilter
 import logging
