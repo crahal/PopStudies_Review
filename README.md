@@ -27,7 +27,7 @@ The data originates from the [Scopus APIs](https://dev.elsevier.com/), using the
 The functions in ```popstudies_preprocessor.py``` clean the data and prepare it for analysis. The formatted notebook which calls the analysis from ```popstudies_analysis.py``` is ```popstudies_notebook.ipynb```.
 
 ### License
-This work is free. You can redistribute it and/or modify it under the terms of the MIT license. It comes without any warranty, to the extent permitted by applicable law.
+This work is free. You can redistribute it and/or modify it under the terms of the GPL-2.0 License. It comes without any warranty, to the extent permitted by applicable law.
 
 ### Acknowledgments
 Research assistance for the manual data curation was provided by Sofia Gieystor and Jiani Yan. Funding generously provided by the Leverhulme Trust, Leverhulme Centre for Demographic Science, and Nuffield College. We're also grateful to Anne Shepherd at the Population Investigation Committee for invaluable knowledge surrounding the journal. As always, all errors remain our own.
